@@ -21,12 +21,23 @@ A quick-reference directory mapping technical responsibilities and project featu
 | :--- | :--- | :--- |
 | `apps/api/package.json` | API package dependencies, scripts (`dev`, `build`, `start`) | Implemented |
 | `apps/api/tsconfig.json` | TypeScript configuration (ESNext, NodeNext, outDir `dist`) | Implemented |
-| `apps/api/drizzle.config.ts` | Drizzle Kit config (PostgreSQL, schema `./src/db/schema.ts`) | Implemented |
+| `apps/api/drizzle.config.ts` | Drizzle Kit config (PostgreSQL, schema `./src/db/schema.ts`, verbose+strict) | Implemented |
 | `apps/api/.env` | Environment configuration (`PORT`, `DATABASE_URL`) | Implemented |
 | `apps/api/src/index.ts` | Backend entry point; Hono server initialization & routes | Implemented |
 | `apps/api/dist/index.js` | Compiled JavaScript output | Generated |
-| `apps/api/src/db/schema.ts` | Target path for Drizzle ORM database tables & relations | Planned / Not created |
-| `apps/api/drizzle/` | Target directory for generated SQL migrations | Planned / Not created |
+| `apps/api/src/db/index.ts` | Drizzle DB singleton (pg Pool + schema + relations) | Implemented |
+| `apps/api/src/db/schema.ts` | Drizzle Kit entry-point shim (re-exports schema/index.ts) | Implemented |
+| `apps/api/src/db/schema/users.ts` | `users` table definition + type exports | Implemented |
+| `apps/api/src/db/schema/participants.ts` | `participants` table definition + type exports | Implemented |
+| `apps/api/src/db/schema/events.ts` | `events` table + `event_status` enum | Implemented |
+| `apps/api/src/db/schema/event-registrations.ts` | `event_registrations` table + `registration_status` enum | Implemented |
+| `apps/api/src/db/schema/certificate-templates.ts` | `certificate_templates` table + page_size/orientation enums | Implemented |
+| `apps/api/src/db/schema/certificates.ts` | `certificates` table + `certificate_status` enum | Implemented |
+| `apps/api/src/db/schema/certificate-assets.ts` | `certificate_assets` table + `asset_type` enum | Implemented |
+| `apps/api/src/db/schema/audit-logs.ts` | `audit_logs` table | Implemented |
+| `apps/api/src/db/schema/index.ts` | Barrel re-export of all schema modules | Implemented |
+| `apps/api/src/db/relations.ts` | Drizzle ORM query relations (separate from FK constraints) | Implemented |
+| `apps/api/drizzle/` | Generated SQL migration files | Implemented |
 | `apps/api/src/routes/` | Target directory for modular Hono route handlers | Planned / Not created |
 | `apps/api/src/services/` | Target directory for domain business logic (certificates) | Planned / Not created |
 
@@ -62,3 +73,17 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `packages/shared/` | Workspace directory for cross-cutting types & schemas | Directory exists, empty |
 | `packages/shared/package.json` | Target package manifest for shared code | Planned / Not created |
 | `packages/shared/src/index.ts` | Target barrel export for shared DTOs & Zod schemas | Planned / Not created |
+
+---
+
+## 5. Architecture & Context Documentation
+
+| Path | Description | Status |
+| :--- | :--- | :--- |
+| `docs/architecture/overview.md` | System overview, components, and communication patterns | Implemented |
+| `docs/architecture/project-structure.md` | Complete monorepo directory layout and layer guide | Implemented |
+| `docs/architecture/database.md` | Database architecture, Neon connection, and Drizzle status | Implemented |
+| `docs/architecture/api-contracts.md` | Hono endpoints, verified routes, and planned REST specs | Implemented |
+| `docs/architecture/decisions.md` | Architectural Decision Records (ADR-001 through ADR-006) | Implemented |
+| `docs/agent-context/codebase-map.md` | Codebase quick-reference directory map (this file) | Implemented |
+

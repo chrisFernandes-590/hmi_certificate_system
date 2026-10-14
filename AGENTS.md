@@ -137,6 +137,7 @@ pnpm --filter web preview
 When modifying or expanding the codebase, consult and update the following context documents:
 
 - **System Architecture**: `docs/architecture/overview.md`
+- **Project Directory Structure**: `docs/architecture/project-structure.md`
 - **Database Schema & Migrations**: `docs/architecture/database.md`
 - **API Endpoints & Contracts**: `docs/architecture/api-contracts.md`
 - **Architectural Decisions**: `docs/architecture/decisions.md`
