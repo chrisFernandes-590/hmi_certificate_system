@@ -10,6 +10,7 @@ export * from "./users.js";
 export * from "./auth.js";
 export * from "./participants.js";
 export * from "./events.js";
+export * from "./event-memberships.js";
 export * from "./event-registrations.js";
 export * from "./certificate-templates.js";
 export * from "./certificates.js";

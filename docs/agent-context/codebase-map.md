@@ -24,8 +24,8 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/drizzle.config.ts` | Drizzle Kit config (PostgreSQL, schema `./src/db/schema.ts`, verbose+strict) | Implemented |
 | `apps/api/.env` | Environment configuration (`PORT`, `DATABASE_URL`) | Implemented |
 | `apps/api/.env.example` | Safe local auth/database configuration template | Implemented |
-| `apps/api/src/index.ts` | Server startup and auth dependency wiring | Implemented |
-| `apps/api/src/app.ts` | Hono app factory, global handlers, health and auth routes | Implemented |
+| `apps/api/src/index.ts` | Server startup and auth/event dependency wiring | Implemented |
+| `apps/api/src/app.ts` | Hono app factory, global handlers, health, auth and event routes | Implemented |
 | `apps/api/src/config/auth-config.ts` | Validated auth environment configuration | Implemented |
 | `apps/api/dist/index.js` | Compiled JavaScript output | Generated |
 | `apps/api/src/db/index.ts` | Drizzle DB singleton (pg Pool + schema + relations) | Implemented |
@@ -34,6 +34,10 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/db/schema/auth.ts` | Credentials, sessions, one-time tokens, external identity tables | Implemented |
 | `apps/api/src/db/schema/participants.ts` | `participants` table definition + type exports | Implemented |
 | `apps/api/src/db/schema/events.ts` | `events` table + `event_status` enum | Implemented |
+| `apps/api/src/db/schema/event-memberships.ts` | Per-event member/admin role and unique user/event membership | Implemented |
+| `apps/api/src/repositories/events/` | Drizzle event and membership persistence | Implemented |
+| `apps/api/src/services/events/` | Event access, date validation, create, edit and archive rules | Implemented |
+| `apps/api/src/routes/events.ts` | Authenticated event list/detail/create/edit/archive routes | Implemented |
 | `apps/api/src/db/schema/event-registrations.ts` | `event_registrations` table + `registration_status` enum | Implemented |
 | `apps/api/src/db/schema/certificate-templates.ts` | `certificate_templates` table + page_size/orientation enums | Implemented |
 | `apps/api/src/db/schema/certificates.ts` | `certificates` table + `certificate_status` enum | Implemented |
@@ -48,7 +52,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/services/auth/` | Provider interface, local Argon2id provider, email adapter | Implemented |
 | `apps/api/test/` | Authentication provider and route tests | Implemented |
 | `apps/api/drizzle/0001_magical_steve_rogers.sql` | Auth tables and removal of empty legacy credential columns | Implemented |
-| `apps/api/src/routes/` | Target directory for modular domain routes | Planned / Not created |
+| `apps/api/drizzle/0002_nasty_anthem.sql` | Event membership, archive field and owner-admin backfill | Implemented |
 
 ---
 
@@ -65,8 +69,9 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/.oxlintrc.json` | Oxlint linter rules and plugins | Implemented |
 | `apps/web/index.html` | HTML container mounting React `#root` | Implemented |
 | `apps/web/src/main.tsx` | Frontend entry point mounting `<App />` via `createRoot` | Implemented |
-| `apps/web/src/App.tsx` | Auth pages, verification, and protected account route | Implemented |
-| `apps/web/src/lib/api-client.ts` | Central client for standard success/error API envelopes | Implemented |
+| `apps/web/src/App.tsx` | Auth pages, event routes and protected account route | Implemented |
+| `apps/web/src/features/events/events.tsx` | Event list/detail/create/edit views and TanStack Query operations | Implemented |
+| `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |
 | `apps/web/src/index.css` | Global styles, Tailwind v4 imports, Geist font, theme tokens | Implemented |
 | `apps/web/src/lib/utils.ts` | Helper function exporting `cn` utility | Implemented |
@@ -80,9 +85,11 @@ A quick-reference directory mapping technical responsibilities and project featu
 
 | Path | Description | Status |
 | :--- | :--- | :--- |
-| `packages/shared/` | Workspace directory for cross-cutting types & schemas | Directory exists, empty |
-| `packages/shared/package.json` | Target package manifest for shared code | Planned / Not created |
-| `packages/shared/src/index.ts` | Target barrel export for shared DTOs & Zod schemas | Planned / Not created |
+| `packages/shared/package.json` | Workspace package manifest for `@hmi/shared` | Implemented |
+| `packages/shared/src/index.js` | Runtime exports for shared constants and schemas | Implemented |
+| `packages/shared/src/constants/events.js` | Event status and membership role values | Implemented |
+| `packages/shared/src/schemas/events.js` | Shared Zod event create/update validation | Implemented |
+| `packages/shared/src/types/index.d.ts` | Event DTO/input, public user, and response envelope types | Implemented |
 
 ---
 

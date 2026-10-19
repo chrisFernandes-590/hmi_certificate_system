@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { users } from "./schema/users.js";
 import { participants } from "./schema/participants.js";
 import { events } from "./schema/events.js";
+import { eventMemberships } from "./schema/event-memberships.js";
 import { eventRegistrations } from "./schema/event-registrations.js";
 import { certificateTemplates } from "./schema/certificate-templates.js";
 import { certificates } from "./schema/certificates.js";
@@ -21,6 +22,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     references: [participants.userId],
   }),
   ownedEvents: many(events),
+  eventMemberships: many(eventMemberships),
   ownedTemplates: many(certificateTemplates),
   issuedCertificates: many(certificates),
   auditActions: many(auditLogs),
@@ -35,6 +37,17 @@ export const participantsRelations = relations(participants, ({ one, many }) => 
   certificates: many(certificates),
 }));
 
+export const eventMembershipsRelations = relations(eventMemberships, ({ one }) => ({
+  event: one(events, {
+    fields: [eventMemberships.eventId],
+    references: [events.id],
+  }),
+  user: one(users, {
+    fields: [eventMemberships.userId],
+    references: [users.id],
+  }),
+}));
+
 export const eventsRelations = relations(events, ({ one, many }) => ({
   owner: one(users, {
     fields: [events.ownerId],
@@ -42,6 +55,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   }),
   registrations: many(eventRegistrations),
   certificates: many(certificates),
+  memberships: many(eventMemberships),
 }));
 
 export const eventRegistrationsRelations = relations(

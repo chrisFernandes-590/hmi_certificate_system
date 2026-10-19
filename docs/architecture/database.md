@@ -3,7 +3,7 @@
 ## 1. Current Implementation State
 
 > [!NOTE]
-> **Domain schema implemented.** Authentication adds separate credential, session, verification/reset token, and external identity tables. Apply the auth migration after the initial schema migration.
+> **Domain and authentication schemas implemented.** Apply migrations in order. Event ownership is represented by event-scoped memberships; deletion is archival to preserve history.
 
 ### Verified Database Configuration
 
@@ -41,7 +41,8 @@
 | `password_reset_tokens` | uuid | hashed, expiring, consumable token | token_hash UNIQUE, user_id |
 | `external_identities` | uuid | provider subject mapped to stable app user | (provider, subject) UNIQUE |
 | `participants` | uuid | `user_id` UNIQUE, age CHECK (0–150) | — |
-| `events` | uuid | end_date >= start_date CHECK | — |
+| `events` | uuid | owner_id FK; end_date >= start_date CHECK; nullable archived_at | archived_at |
+| `event_memberships` | uuid | UNIQUE(event_id, user_id); role is `admin` or `member` | event_id, user_id |
 | `event_registrations` | uuid | UNIQUE(event_id, participant_id) | event_id, participant_id (+ unique) |
 | `certificate_templates` | uuid | layout_config JSONB NOT NULL | — |
 | `certificates` | uuid | certificate_number UNIQUE, verification_token UNIQUE | (event_id, status), (participant_id, issued_at) |
@@ -65,6 +66,7 @@
 | :--- | :--- | :--- |
 | `participants.user_id → users.id` | CASCADE | Participant profile follows account deletion |
 | `events.owner_id → users.id` | RESTRICT | Prevent orphaned events |
+| `event_memberships.event_id/user_id` | CASCADE | Membership belongs to an event and stable application user UUID |
 | `event_registrations.event_id/participant_id` | RESTRICT | Preserve registration history |
 | `certificate_templates.owner_id → users.id` | RESTRICT | Templates belong to an owner |
 | `certificates.participant_id / event_id / issuer_id` | RESTRICT | Preserve issued certificate history |
@@ -78,6 +80,7 @@
 
 - **Initial schema**: `apps/api/drizzle/0000_curved_tyger_tiger.sql`.
 - **Authentication**: `apps/api/drizzle/0001_magical_steve_rogers.sql` creates auth tables and drops legacy `users.password_hash` and `users.auth_provider` columns. The data-free legacy table is intentionally modified.
+- **Event management**: `apps/api/drizzle/0002_nasty_anthem.sql` adds `events.archived_at` and event-scoped memberships, then backfills each existing event owner as its admin. Event create plus initial membership is transactional. DELETE archives; it does not delete registration or certificate rows.
 - **Apply locally**: set `DATABASE_URL` in `apps/api/.env` and run `pnpm --filter api db:migrate` from the repository root.
 
 ### Commands

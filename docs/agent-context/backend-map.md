@@ -12,9 +12,9 @@ The backend application is a Node.js REST API service built with Hono (`hono@^4.
 
 ## 2. Verified Implementation & Route Registration
 
-`src/index.ts` wires the database repository, local auth provider, email
+`src/index.ts` wires the database repositories, event service, local auth provider, email
 adapter, and HTTP server. `src/app.ts` creates the Hono app, registers global
-error and not-found handlers, then mounts the health and auth routes. See
+error and not-found handlers, then mounts the health, auth, and event routes. See
 `docs/architecture/api-contracts.md` for endpoint and response details.
 
 ---
@@ -24,12 +24,12 @@ error and not-found handlers, then mounts the health and auth routes. See
 | Layer | Implementation Status | Details |
 | :--- | :--- | :--- |
 | **HTTP Server** | Implemented | Hono app mounted using `@hono/node-server` on port 3000. |
-| **Routing** | Implemented | `createApp` mounts health and `/api/auth/*` routes. |
+| **Routing** | Implemented | `createApp` mounts health, `/api/auth/*`, and `/api/events/*` routes. |
 | **Middleware** | Implemented | Standard errors, validation, cookie/bearer auth, Origin checks, and in-memory sensitive-route throttles. |
 | **Database Access** | Implemented | `src/db/index.ts` provides Drizzle over PostgreSQL; auth records are in `src/db/schema/auth.ts`. |
 | **Validation** | Implemented | Auth request bodies use Zod and the common error envelope. |
 | **Authentication** | Implemented (local) | `LocalAuthProvider`, Drizzle repository, hashed sessions, Argon2id, and auth middleware. Cognito is future work. |
-| **Services / Business Logic**| Not implemented | No certificate generation, verification, or event logic exists. |
+| **Services / Business Logic**| Partially implemented | Event service validates dates and enforces event-scoped admin permissions. Certificate logic remains unimplemented. |
 | **Error Handling** | Implemented | `AppError`, validation errors, Hono 4xx exceptions, unexpected errors, and unknown routes use standardized error responses. Unexpected exceptions are logged and masked from clients. |
 
 ---

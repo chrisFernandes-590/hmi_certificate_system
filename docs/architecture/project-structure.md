@@ -6,7 +6,7 @@ The **HMI Certificate System** is organized as a feature-driven TypeScript monor
 
 - **Frontend Application (`apps/web`)**: React 19 Single Page Application built with Vite and Tailwind CSS v4, structured into domain feature modules, layout shells, and reusable UI building blocks.
 - **Backend Application (`apps/api`)**: High-performance REST API built with Hono and Node.js, featuring modular route registration, middleware, vertical domain feature slices, and a Drizzle ORM PostgreSQL persistence layer.
-- **Shared Package (`packages/shared`)**: Pure TypeScript contracts, Zod validation schemas, and domain constants shared between client and server to enforce end-to-end type safety without circular dependencies.
+- **Shared Package (`packages/shared`)**: Cross-app API contracts, Zod validation schemas, and domain constants shared between client and server to enforce end-to-end type safety without circular dependencies.
 
 > [!NOTE]
 > Both client and server employ vertical feature slicing (`features/`), collocating domain-specific components, routes, handlers, and business logic into isolated modules.
@@ -145,9 +145,14 @@ Central single source of truth for contracts shared between `apps/web` and `apps
 
 | Directory / File | Description & Contents |
 | :--- | :--- |
-| `src/schemas/` | Zod validation schemas for request bodies, query params, and API payloads. |
-| `src/types/` | TypeScript type declarations, DTOs, and domain model contracts. |
-| `src/constants/` | Domain constants, certificate status enums (`ISSUED`, `REVOKED`, `PENDING`), error codes. |
+| `src/schemas/events.js` | Shared Zod event create/update request schemas. |
+| `src/types/index.d.ts` | TypeScript event DTO/input, public user, and response envelope contracts. |
+| `src/constants/events.js` | Event status and membership role values used by the API and web app. |
+
+The package exposes these through `@hmi/shared`. Runtime schemas/constants are
+JavaScript ESM, with declarations alongside the package entry point; this lets
+the API's compiled JavaScript and the Vite frontend import the same runtime
+validation without a separate shared build step.
 
 ---
 

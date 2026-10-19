@@ -3,7 +3,9 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useSearchPar
 import { AuthProvider } from './lib/auth'
 import { apiRequest, type User } from './lib/api-client'
 import { useAuth } from './lib/use-auth'
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@hmi/shared'
 import './App.css'
+import { EventDetailsPage, EventFormPage, EventListPage } from './features/events/events'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -32,10 +34,17 @@ function FormPage({ kind }: { kind: 'login' | 'register' | 'forgot' | 'reset' })
     event.preventDefault()
     setBusy(true); setError(''); setMessage('')
     const form = new FormData(event.currentTarget)
-    const body: Record<string, string> = Object.fromEntries(form.entries()) as Record<string, string>
-    if (kind === 'reset') body.token = query.get('token') ?? ''
+    const rawBody: Record<string, string> = Object.fromEntries(form.entries()) as Record<string, string>
+    if (kind === 'reset') rawBody.token = query.get('token') ?? ''
+    const schemas = { login: loginSchema, register: registerSchema, forgot: forgotPasswordSchema, reset: resetPasswordSchema }
+    const parsed = schemas[kind].safeParse(rawBody)
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Please check the form values.')
+      setBusy(false)
+      return
+    }
     try {
-      const result = await apiRequest<{ user?: User; message?: string }>(config.path, { method: 'POST', body: JSON.stringify(body) })
+      const result = await apiRequest<{ user?: User; message?: string }>(config.path, { method: 'POST', body: JSON.stringify(parsed.data) })
       if (kind === 'login') { await refresh(); navigate('/account') }
       else if (kind === 'register') setMessage('If the address can be registered, a verification email has been sent. Open its link to verify your email before signing in.')
       else if (kind === 'forgot') setMessage(result.message ?? 'If an account exists for that address, reset instructions have been sent.')
@@ -86,7 +95,7 @@ function AccountPage() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not sign out. Please try again.') }
     finally { setBusy(false) }
   }
-  return <AuthLayout title="Your account"><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
+  return <AuthLayout title="Your account"><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/events">Manage events</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
 }
 
 function AppRoutes() {
@@ -99,6 +108,10 @@ function AppRoutes() {
     <Route path="/reset-password" element={<FormPage kind="reset" />} />
     <Route path="/verify-email" element={<VerifyPage />} />
     <Route path="/account" element={<Protected><AccountPage /></Protected>} />
+    <Route path="/events" element={<Protected><EventListPage /></Protected>} />
+    <Route path="/events/new" element={<Protected><EventFormPage mode="create" /></Protected>} />
+    <Route path="/events/:eventId" element={<Protected><EventDetailsPage /></Protected>} />
+    <Route path="/events/:eventId/edit" element={<Protected><EventFormPage mode="edit" /></Protected>} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 }

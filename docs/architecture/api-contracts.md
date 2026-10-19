@@ -39,6 +39,34 @@ Copy `apps/api/.env.example` to `apps/api/.env`, set `DATABASE_URL`, and run the
 
 For Expo/React Native, send `X-Auth-Client: native` and use the returned bearer token on `/me` and `/logout`. Store it only in Expo SecureStore and clear it after logout. `AuthProvider` keeps provider operations separate from application user UUIDs and authorization. A future Cognito adapter should validate Cognito identities and attach a verified provider subject to the existing `users.id` through controlled linking; do not match/link based on unverified email. Event memberships and certificate ownership continue to reference the application UUID.
 
+### Event management (`/api/events`)
+
+All event routes require a valid session for an email-verified user. Browser requests use the session cookie; native requests use the existing `X-Auth-Client: native` bearer convention.
+
+| Method | Path | Purpose | Access |
+| --- | --- | --- | --- |
+| `POST` | `/api/events` | Create an event and its creator's admin membership atomically | Any authenticated verified user |
+| `GET` | `/api/events` or `/api/events/` | List non-archived events where the user has membership | Event member/admin |
+| `GET` | `/api/events/:eventId` | Get event details | Event member/admin |
+| `PATCH` | `/api/events/:eventId` | Update name, description, dates, or status | Event admin |
+| `DELETE` | `/api/events/:eventId` | Archive an event | Event admin |
+
+Create example:
+
+```json
+{
+  "name": "HMI Graduation 2026",
+  "description": "Annual graduation ceremony",
+  "startDate": "2026-11-01T10:00:00.000Z",
+  "endDate": "2026-11-01T15:00:00.000Z",
+  "status": "draft"
+}
+```
+
+Success data contains `{ "event": { ...event, "accessRole": "admin" } }` (HTTP `201` on create); list data contains `{ "events": [...] }`. Dates must be ISO date-time values and the end must not precede the start. User IDs and roles are derived from the session and database membership, never request bodies. Admin is scoped to one event. DELETE sets `archivedAt`; it preserves the event row and its registration, participant, and certificate history. Archived events are omitted from list and detail access.
+
+Shared JSON contracts live in `packages/shared` (`@hmi/shared`): authentication request schemas/types, event statuses/roles and create/update schemas, event DTOs, public user and auth response types, and success/error envelope types. API route validation and frontend form validation use the shared auth and event schemas. Database records and authorization logic remain in the API.
+
 ## 2. Response Conventions
 
 Successful responses use `successResponse(c, data, statusCode?)`. The status
@@ -126,8 +154,8 @@ Add a route in the relevant `apps/api/src/routes/` module and mount it from
    client-safe message/details. Let unexpected errors propagate to `onError`.
 5. Avoid manual response envelopes and redundant `try-catch` blocks.
 
-The following certificate, event, and participant endpoints are planned and are
-not currently implemented:
+The following certificate and participant endpoints are planned and are not
+currently implemented:
 
 | Endpoint | Method | Purpose | Auth |
 | :--- | :--- | :--- | :--- |
@@ -137,5 +165,4 @@ not currently implemented:
 | `/api/certificates/verify/:code` | `GET` | Verify a certificate | Public |
 | `/api/certificates/:id/pdf` | `GET` | Download certificate PDF | Optional/token-based |
 | `/api/certificates/:id/revoke` | `PATCH` | Revoke a certificate | Admin |
-| `/api/events` | `GET` / `POST` | Manage events | Admin |
 | `/api/participants` | `GET` / `POST` | Manage participants | Admin |

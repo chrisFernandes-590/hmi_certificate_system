@@ -30,7 +30,7 @@ apps/web/src/
 ```
 
 ### Current View (`src/App.tsx`)
-Implements registration, login, email verification, recovery/reset, session restoration, logout, and a protected account view. Certificate dashboards and workflows remain unimplemented.
+Implements registration, login, email verification, recovery/reset, session restoration, logout, a protected account view, and protected event list/detail/create/edit pages. Participant and certificate workflows remain unimplemented.
 
 ---
 
@@ -54,10 +54,10 @@ Implements registration, login, email verification, recovery/reset, session rest
 
 | Capability | Installed Dependency | Current Implementation Status |
 | :--- | :--- | :--- |
-| **Routing** | `react-router-dom@^7.18.4` | Wired for authentication pages and the protected account route. |
-| **Server State / API Caching** | `@tanstack/react-query@^5.104.1` | **Not wired**: `QueryClientProvider` is not initialized. No API queries exist. |
+| **Routing** | `react-router-dom@^7.18.4` | Wired for auth pages plus protected account and event routes. |
+| **Server State / API Caching** | `@tanstack/react-query@^5.104.1` | Wired in `main.tsx`; event queries and mutations invalidate the event cache. |
 | **Form Management** | `react-hook-form@^7.90.0`, `@hookform/resolvers@^5.9.1` | **Not wired**: No form components or form hooks exist. |
-| **Client Validation** | `zod@^4.6.6` | **Not wired**: No client-side validation schemas exist. |
+| **Client Validation** | Zod 4 via `@hmi/shared` | Auth forms and event create/edit forms use the same schemas as API routes. |
 | **Auth State** | React context | Session restored through `/api/auth/me`; token stays in an HttpOnly cookie. |
 
 ---
