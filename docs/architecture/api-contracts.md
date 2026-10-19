@@ -1,8 +1,8 @@
 # API Contracts & Endpoint Specification: HMI Certificate System
 
-## 1. Implemented Endpoint
+## 1. Implemented Endpoints
 
-The Hono API currently exposes one endpoint.
+The Hono API exposes a health endpoint and local authentication endpoints.
 
 ### `GET /`
 
@@ -16,6 +16,28 @@ The Hono API currently exposes one endpoint.
   "data": { "message": "Hello Hono!" }
 }
 ```
+
+### Authentication (`/api/auth`)
+
+All request bodies are JSON. Registration requires `{ "name", "email", "password" }`; verification accepts `{ "token" }`; login accepts `{ "email", "password" }`; forgot-password accepts `{ "email" }`; reset accepts `{ "token", "password" }`. Passwords must be 12–128 characters. Registration and recovery return `202` with generic text to limit account enumeration. Accounts must verify their email before sign-in. `GET /me` requires a web session cookie; native clients can send `X-Auth-Client: native` with `Authorization: Bearer <token>`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Register and request email verification |
+| `POST` | `/api/auth/verify-email` | Consume a one-time verification token |
+| `POST` | `/api/auth/login` | Create a server-managed session |
+| `POST` | `/api/auth/logout` | Revoke the active session |
+| `GET` | `/api/auth/me` | Restore the current user |
+| `POST` | `/api/auth/forgot-password` | Request a password reset |
+| `POST` | `/api/auth/reset-password` | Consume reset token and replace password |
+
+Successful authenticated responses expose only `id`, `name`, `email`, and `emailVerifiedAt`; credentials and token hashes are never returned. Browser mutations require a matching `Origin` header and use `HttpOnly; SameSite=Lax` cookies. Native login returns an access token for platform secure storage.
+
+### Local setup and client portability
+
+Copy `apps/api/.env.example` to `apps/api/.env`, set `DATABASE_URL`, and run the database migration before starting the API. For local verification/reset links set `DEV_EMAIL_ENABLED=true` while `NODE_ENV=development`; the API prints links to its console. The default is disabled. Production startup is blocked until a real `EmailProvider` is configured. Run `pnpm --filter api test` for auth tests.
+
+For Expo/React Native, send `X-Auth-Client: native` and use the returned bearer token on `/me` and `/logout`. Store it only in Expo SecureStore and clear it after logout. `AuthProvider` keeps provider operations separate from application user UUIDs and authorization. A future Cognito adapter should validate Cognito identities and attach a verified provider subject to the existing `users.id` through controlled linking; do not match/link based on unverified email. Event memberships and certificate ownership continue to reference the application UUID.
 
 ## 2. Response Conventions
 
@@ -75,7 +97,7 @@ app.get('/api/certificates/:id', asyncHandler(async (c) => {
 }))
 ```
 
-`index.ts` registers `apiErrorHandler` with `app.onError` and
+`createApp` in `apps/api/src/app.ts` registers `apiErrorHandler` with `app.onError` and
 `apiNotFoundHandler` with `app.notFound` before route definitions. The global
 handler:
 
@@ -94,7 +116,7 @@ the global error handler.
 ## 5. Adding Endpoints
 
 Add a route in the relevant `apps/api/src/routes/` module and mount it from
-`index.ts`. For each endpoint:
+`apps/api/src/app.ts`. For each endpoint:
 
 1. Keep its existing validation, authorization, and business logic.
 2. Wrap async handlers in `asyncHandler`.

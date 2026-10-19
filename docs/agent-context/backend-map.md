@@ -12,31 +12,10 @@ The backend application is a Node.js REST API service built with Hono (`hono@^4.
 
 ## 2. Verified Implementation & Route Registration
 
-The current implementation in `apps/api/src/index.ts` registers global error
-handling before the root endpoint. The endpoint uses the standard success
-envelope and the reusable async route wrapper:
-
-```typescript
-import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
-import { successResponse } from './lib/api-response.js'
-import { asyncHandler } from './middleware/async-handler.js'
-import { apiErrorHandler, apiNotFoundHandler } from './middleware/error-handler.js'
-
-const app = new Hono()
-
-app.onError(apiErrorHandler)
-app.notFound(apiNotFoundHandler)
-
-app.get('/', asyncHandler((c) => successResponse(c, { message: 'Hello Hono!' })))
-
-serve({
-  fetch: app.fetch,
-  port: 3000
-}, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`)
-})
-```
+`src/index.ts` wires the database repository, local auth provider, email
+adapter, and HTTP server. `src/app.ts` creates the Hono app, registers global
+error and not-found handlers, then mounts the health and auth routes. See
+`docs/architecture/api-contracts.md` for endpoint and response details.
 
 ---
 
@@ -45,11 +24,11 @@ serve({
 | Layer | Implementation Status | Details |
 | :--- | :--- | :--- |
 | **HTTP Server** | Implemented | Hono app mounted using `@hono/node-server` on port 3000. |
-| **Routing** | Minimal (1 route) | Single root endpoint `GET /`; feature route modules are not implemented. |
-| **Middleware** | None registered | No CORS, request logging, body parsing, or auth middleware attached. |
-| **Database Access** | Configured / Unconnected | `drizzle.config.ts` exists, but no database client or schema file exists in `src/`. |
-| **Validation** | Not implemented | `zod@^4.6.6` is installed in `package.json`, but no validators are attached. |
-| **Authentication** | Not implemented | No token verification, session store, or RBAC guards exist. |
+| **Routing** | Implemented | `createApp` mounts health and `/api/auth/*` routes. |
+| **Middleware** | Implemented | Standard errors, validation, cookie/bearer auth, Origin checks, and in-memory sensitive-route throttles. |
+| **Database Access** | Implemented | `src/db/index.ts` provides Drizzle over PostgreSQL; auth records are in `src/db/schema/auth.ts`. |
+| **Validation** | Implemented | Auth request bodies use Zod and the common error envelope. |
+| **Authentication** | Implemented (local) | `LocalAuthProvider`, Drizzle repository, hashed sessions, Argon2id, and auth middleware. Cognito is future work. |
 | **Services / Business Logic**| Not implemented | No certificate generation, verification, or event logic exists. |
 | **Error Handling** | Implemented | `AppError`, validation errors, Hono 4xx exceptions, unexpected errors, and unknown routes use standardized error responses. Unexpected exceptions are logged and masked from clients. |
 
@@ -61,12 +40,14 @@ When implementing the domain features, the backend should be organized as follow
 
 ```
 apps/api/src/
-├── index.ts               # Server startup, global middleware, route mounts
+├── index.ts               # Server startup and dependency wiring
+├── app.ts                 # Hono app factory, routes, global error handlers
 ├── db/
 │   ├── index.ts           # Drizzle client instance (pg pool connection)
 │   └── schema.ts          # Table definitions and relations
 ├── middleware/
-│   ├── auth.ts            # Authentication and authorization guards
+│   ├── auth.ts            # Session auth and CSRF origin guard
+│   ├── rate-limit.ts      # In-process sensitive-route throttling
 │   ├── async-handler.ts   # Wrap async route callbacks; forward rejections to Hono
 │   ├── error-handler.ts   # Global error and not-found response handlers
 │   └── cors.ts            # CORS configuration for frontend origin
@@ -79,9 +60,10 @@ apps/api/src/
 │   ├── events.ts          # Event management endpoints
 │   └── participants.ts    # Participant management endpoints
 └── services/
-    ├── certificate.ts     # Issuance, numbering, and revocation logic
-    ├── pdf.ts             # PDF document generation
-    └── qr.ts              # QR code payload and image generation
+    └── auth/              # Provider abstraction, local Argon2id provider, mail adapter
+    ├── certificate.ts     # Issuance, numbering, and revocation logic (planned)
+    ├── pdf.ts             # PDF document generation (planned)
+    └── qr.ts              # QR code payload and image generation (planned)
 ```
 
 ---

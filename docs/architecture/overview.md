@@ -59,7 +59,7 @@ graph TD
 
 ### Frontend & Mobile to Backend
 - **Pattern**: Web client and future React Native / Expo client communicate with the backend over HTTP/REST JSON endpoints using predictable success/error contract envelopes.
-- **Current State**: Backend starter route `GET /` is operational; client-to-backend integration is in development.
+- **Current State**: Health and local authentication endpoints are implemented. The web SPA provides registration, verification, login, recovery, session restoration, logout, and a protected account view; certificate workflows remain planned.
 
 ### Backend to Database
 - **Pattern**: Database access uses Drizzle ORM queries and migrations over PostgreSQL (Neon Serverless in development, Amazon RDS in production).

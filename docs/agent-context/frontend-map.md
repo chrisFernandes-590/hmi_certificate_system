@@ -14,19 +14,23 @@ The frontend is a Single-Page Application (SPA) built with React 19, TypeScript,
 ```
 apps/web/src/
 ├── main.tsx              # Application bootstrap
-├── App.tsx               # Root view (currently starter counter demo)
-├── App.css               # Starter component styles
+├── App.tsx               # Auth routes, forms, verification, protected account page
+├── App.css               # Authentication layout styles
 ├── index.css             # Tailwind v4 directives, design tokens, theme variables
 ├── assets/               # Static image assets (hero.png, react.svg, vite.svg)
 ├── components/
 │   └── ui/
 │       └── button.tsx    # Shadcn Button component built on @base-ui/react
 └── lib/
-    └── utils.ts          # Utility functions (cn helper)
+    ├── api-client.ts      # Standardized envelope client
+    ├── auth.tsx           # Session context provider
+    ├── auth-context.ts    # Shared auth context type/value
+    ├── use-auth.ts        # Auth context hook
+    └── utils.ts           # Utility functions (cn helper)
 ```
 
 ### Current View (`src/App.tsx`)
-Currently renders the Vite + React starter template featuring an interactive counter (`useState(0)`), hero icons, and documentation links. Feature-specific pages (e.g., certificate dashboard, generator, verifier) are not yet implemented.
+Implements registration, login, email verification, recovery/reset, session restoration, logout, and a protected account view. Certificate dashboards and workflows remain unimplemented.
 
 ---
 
@@ -50,11 +54,11 @@ Currently renders the Vite + React starter template featuring an interactive cou
 
 | Capability | Installed Dependency | Current Implementation Status |
 | :--- | :--- | :--- |
-| **Routing** | `react-router-dom@^7.18.4` | **Not wired**: No router provider or route definitions exist. `App.tsx` is rendered directly. |
+| **Routing** | `react-router-dom@^7.18.4` | Wired for authentication pages and the protected account route. |
 | **Server State / API Caching** | `@tanstack/react-query@^5.104.1` | **Not wired**: `QueryClientProvider` is not initialized. No API queries exist. |
 | **Form Management** | `react-hook-form@^7.90.0`, `@hookform/resolvers@^5.9.1` | **Not wired**: No form components or form hooks exist. |
 | **Client Validation** | `zod@^4.6.6` | **Not wired**: No client-side validation schemas exist. |
-| **Local State** | React `useState` | Single counter state in `App.tsx`. |
+| **Auth State** | React context | Session restored through `/api/auth/me`; token stays in an HttpOnly cookie. |
 
 ---
 

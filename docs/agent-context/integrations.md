@@ -10,6 +10,12 @@
 - **Environment Variable**: `DATABASE_URL` (connection string with SSL/channel binding parameters).
 - **Security Rule**: The database connection string contains credentials and must strictly remain in `apps/api/.env`. It must never be checked into version control or exposed to the frontend bundle.
 
+### Local Authentication and Email
+- **Identity**: Email/password authentication is behind `AuthProvider`; immutable `users.id` UUIDs remain the application identity.
+- **Passwords and sessions**: Argon2id hashes credentials. Only SHA-256 hashes of random session and one-time email tokens are stored.
+- **Email**: `EmailProvider` separates delivery from auth services. `DEV_EMAIL_ENABLED=true` enables console links in development only. A production mail provider remains to be implemented, and production startup refuses until configured.
+- **Web sessions**: HttpOnly SameSite cookies; browser write requests require the configured frontend Origin. Native clients use explicit bearer mode and should keep tokens in Expo SecureStore.
+
 ---
 
 ## 2. Planned Target AWS Architecture & External Integrations

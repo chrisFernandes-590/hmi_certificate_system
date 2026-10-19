@@ -3,7 +3,7 @@
 ## 1. Current Implementation State
 
 > [!NOTE]
-> **Schema fully implemented.** All 8 domain tables, 6 PostgreSQL enums, check constraints, foreign keys, indexes, and Drizzle query relations have been defined and a migration file has been generated.
+> **Domain schema implemented.** Authentication adds separate credential, session, verification/reset token, and external identity tables. Apply the auth migration after the initial schema migration.
 
 ### Verified Database Configuration
 
@@ -35,6 +35,11 @@
 | Table | PK | Notable Constraints | Indexes |
 | :--- | :--- | :--- | :--- |
 | `users` | uuid | `email` UNIQUE | — |
+| `user_credentials` | uuid | one row per user, Argon2id password hash | user_id UNIQUE |
+| `auth_sessions` | uuid | hashed session token, expiry, revocation | token_hash UNIQUE, user_id |
+| `email_verification_tokens` | uuid | hashed, expiring, consumable token | token_hash UNIQUE, user_id |
+| `password_reset_tokens` | uuid | hashed, expiring, consumable token | token_hash UNIQUE, user_id |
+| `external_identities` | uuid | provider subject mapped to stable app user | (provider, subject) UNIQUE |
 | `participants` | uuid | `user_id` UNIQUE, age CHECK (0–150) | — |
 | `events` | uuid | end_date >= start_date CHECK | — |
 | `event_registrations` | uuid | UNIQUE(event_id, participant_id) | event_id, participant_id (+ unique) |
@@ -71,21 +76,15 @@
 
 ## 3. Migration
 
-- **File**: `apps/api/drizzle/0000_curved_tyger_tiger.sql`
-- **Generated**: Drizzle Kit `generate` — no tables applied to production yet.
-- **TypeScript check**: `pnpm --filter api build` exits 0 (no errors).
+- **Initial schema**: `apps/api/drizzle/0000_curved_tyger_tiger.sql`.
+- **Authentication**: `apps/api/drizzle/0001_magical_steve_rogers.sql` creates auth tables and drops legacy `users.password_hash` and `users.auth_provider` columns. The data-free legacy table is intentionally modified.
+- **Apply locally**: set `DATABASE_URL` in `apps/api/.env` and run `pnpm --filter api db:migrate` from the repository root.
 
 ### Commands
 
 ```bash
-# Generate a new migration from schema changes
-pnpm --filter api drizzle-kit generate
-
-# Inspect pending migration (preview only)
-pnpm --filter api drizzle-kit migrate --dry-run
-
-# Apply migrations to the target database
-pnpm --filter api drizzle-kit migrate
+# Apply migrations to the configured database
+pnpm --filter api db:migrate
 ```
 
 > [!WARNING]

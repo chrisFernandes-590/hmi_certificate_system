@@ -19,15 +19,19 @@ A quick-reference directory mapping technical responsibilities and project featu
 
 | Path | Description | Status |
 | :--- | :--- | :--- |
-| `apps/api/package.json` | API package dependencies, scripts (`dev`, `build`, `start`) | Implemented |
+| `apps/api/package.json` | API dependencies and scripts (`dev`, `build`, `test`, `start`, database) | Implemented |
 | `apps/api/tsconfig.json` | TypeScript configuration (ESNext, NodeNext, outDir `dist`) | Implemented |
 | `apps/api/drizzle.config.ts` | Drizzle Kit config (PostgreSQL, schema `./src/db/schema.ts`, verbose+strict) | Implemented |
 | `apps/api/.env` | Environment configuration (`PORT`, `DATABASE_URL`) | Implemented |
-| `apps/api/src/index.ts` | Backend entry point; Hono server initialization & routes | Implemented |
+| `apps/api/.env.example` | Safe local auth/database configuration template | Implemented |
+| `apps/api/src/index.ts` | Server startup and auth dependency wiring | Implemented |
+| `apps/api/src/app.ts` | Hono app factory, global handlers, health and auth routes | Implemented |
+| `apps/api/src/config/auth-config.ts` | Validated auth environment configuration | Implemented |
 | `apps/api/dist/index.js` | Compiled JavaScript output | Generated |
 | `apps/api/src/db/index.ts` | Drizzle DB singleton (pg Pool + schema + relations) | Implemented |
 | `apps/api/src/db/schema.ts` | Drizzle Kit entry-point shim (re-exports schema/index.ts) | Implemented |
 | `apps/api/src/db/schema/users.ts` | `users` table definition + type exports | Implemented |
+| `apps/api/src/db/schema/auth.ts` | Credentials, sessions, one-time tokens, external identity tables | Implemented |
 | `apps/api/src/db/schema/participants.ts` | `participants` table definition + type exports | Implemented |
 | `apps/api/src/db/schema/events.ts` | `events` table + `event_status` enum | Implemented |
 | `apps/api/src/db/schema/event-registrations.ts` | `event_registrations` table + `registration_status` enum | Implemented |
@@ -38,8 +42,13 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/db/schema/index.ts` | Barrel re-export of all schema modules | Implemented |
 | `apps/api/src/db/relations.ts` | Drizzle ORM query relations (separate from FK constraints) | Implemented |
 | `apps/api/drizzle/` | Generated SQL migration files | Implemented |
-| `apps/api/src/routes/` | Target directory for modular Hono route handlers | Planned / Not created |
-| `apps/api/src/services/` | Target directory for domain business logic (certificates) | Planned / Not created |
+| `apps/api/src/middleware/auth.ts` | Session authentication and browser Origin guard | Implemented |
+| `apps/api/src/middleware/rate-limit.ts` | In-memory sensitive auth endpoint throttling | Implemented |
+| `apps/api/src/repositories/auth/drizzle-auth-repository.ts` | Drizzle persistence for auth records | Implemented |
+| `apps/api/src/services/auth/` | Provider interface, local Argon2id provider, email adapter | Implemented |
+| `apps/api/test/` | Authentication provider and route tests | Implemented |
+| `apps/api/drizzle/0001_magical_steve_rogers.sql` | Auth tables and removal of empty legacy credential columns | Implemented |
+| `apps/api/src/routes/` | Target directory for modular domain routes | Planned / Not created |
 
 ---
 
@@ -48,7 +57,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | Path | Description | Status |
 | :--- | :--- | :--- |
 | `apps/web/package.json` | Frontend package dependencies & scripts (`dev`, `build`, `lint`) | Implemented |
-| `apps/web/vite.config.ts` | Vite bundler config with React, Tailwind v4, `@/` alias | Implemented |
+| `apps/web/vite.config.ts` | Vite bundler config and `/api` development proxy | Implemented |
 | `apps/web/tsconfig.json` | Solution tsconfig referencing `tsconfig.app` and `tsconfig.node` | Implemented |
 | `apps/web/tsconfig.app.json` | TypeScript configuration for client application code | Implemented |
 | `apps/web/tsconfig.node.json` | TypeScript configuration for Vite/node build scripts | Implemented |
@@ -56,8 +65,9 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/.oxlintrc.json` | Oxlint linter rules and plugins | Implemented |
 | `apps/web/index.html` | HTML container mounting React `#root` | Implemented |
 | `apps/web/src/main.tsx` | Frontend entry point mounting `<App />` via `createRoot` | Implemented |
-| `apps/web/src/App.tsx` | Root UI component (starter counter template) | Implemented |
-| `apps/web/src/App.css` | Starter template CSS styles | Implemented |
+| `apps/web/src/App.tsx` | Auth pages, verification, and protected account route | Implemented |
+| `apps/web/src/lib/api-client.ts` | Central client for standard success/error API envelopes | Implemented |
+| `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |
 | `apps/web/src/index.css` | Global styles, Tailwind v4 imports, Geist font, theme tokens | Implemented |
 | `apps/web/src/lib/utils.ts` | Helper function exporting `cn` utility | Implemented |
 | `apps/web/src/components/ui/button.tsx` | Shadcn Button primitive with CVA variants | Implemented |

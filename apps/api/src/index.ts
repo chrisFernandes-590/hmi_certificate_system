@@ -1,21 +1,23 @@
 import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
-import { successResponse } from './lib/api-response.js'
-import { asyncHandler } from './middleware/async-handler.js'
-import { apiErrorHandler, apiNotFoundHandler } from './middleware/error-handler.js'
+import { authConfig } from './config/auth-config.js'
+import { db } from './db/index.js'
+import { createApp } from './app.js'
+import { DrizzleAuthRepository } from './repositories/auth/drizzle-auth-repository.js'
+import { DevelopmentConsoleEmailProvider, DisabledEmailProvider } from './services/auth/email-provider.js'
+import { LocalAuthProvider } from './services/auth/local-auth-provider.js'
 
-const app = new Hono()
+const emailProvider = authConfig.devEmailEnabled
+  ? new DevelopmentConsoleEmailProvider()
+  : new DisabledEmailProvider()
+const authProvider = new LocalAuthProvider(new DrizzleAuthRepository(db), emailProvider, {
+  sessionTtlSeconds: authConfig.sessionTtlSeconds,
+  verificationTtlSeconds: authConfig.verificationTtlSeconds,
+  passwordResetTtlSeconds: authConfig.passwordResetTtlSeconds,
+  appBaseUrl: authConfig.appBaseUrl,
+})
 
-app.onError(apiErrorHandler)
-app.notFound(apiNotFoundHandler)
+const app = createApp(authProvider, authConfig)
 
-app.get('/', asyncHandler((c) => {
-  return successResponse(c, { message: 'Hello Hono!' })
-}))
-
-serve({
-  fetch: app.fetch,
-  port: 3000
-}, (info) => {
+serve({ fetch: app.fetch, port: authConfig.port }, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`)
 })
