@@ -12,18 +12,23 @@ The backend application is a Node.js REST API service built with Hono (`hono@^4.
 
 ## 2. Verified Implementation & Route Registration
 
-The current implementation in `apps/api/src/index.ts` is minimal:
+The current implementation in `apps/api/src/index.ts` registers global error
+handling before the root endpoint. The endpoint uses the standard success
+envelope and the reusable async route wrapper:
 
 ```typescript
-// Verified content of apps/api/src/index.ts
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { successResponse } from './lib/api-response.js'
+import { asyncHandler } from './middleware/async-handler.js'
+import { apiErrorHandler, apiNotFoundHandler } from './middleware/error-handler.js'
 
 const app = new Hono()
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+app.onError(apiErrorHandler)
+app.notFound(apiNotFoundHandler)
+
+app.get('/', asyncHandler((c) => successResponse(c, { message: 'Hello Hono!' })))
 
 serve({
   fetch: app.fetch,
@@ -40,13 +45,13 @@ serve({
 | Layer | Implementation Status | Details |
 | :--- | :--- | :--- |
 | **HTTP Server** | Implemented | Hono app mounted using `@hono/node-server` on port 3000. |
-| **Routing** | Minimal (1 route) | Single root endpoint `GET /`. No sub-routers or feature routes exist. |
+| **Routing** | Minimal (1 route) | Single root endpoint `GET /`; feature route modules are not implemented. |
 | **Middleware** | None registered | No CORS, request logging, body parsing, or auth middleware attached. |
 | **Database Access** | Configured / Unconnected | `drizzle.config.ts` exists, but no database client or schema file exists in `src/`. |
 | **Validation** | Not implemented | `zod@^4.6.6` is installed in `package.json`, but no validators are attached. |
 | **Authentication** | Not implemented | No token verification, session store, or RBAC guards exist. |
 | **Services / Business Logic**| Not implemented | No certificate generation, verification, or event logic exists. |
-| **Error Handling** | Default | Relies on Hono's default error response. No custom error handler attached. |
+| **Error Handling** | Implemented | `AppError`, validation errors, Hono 4xx exceptions, unexpected errors, and unknown routes use standardized error responses. Unexpected exceptions are logged and masked from clients. |
 
 ---
 
@@ -62,8 +67,13 @@ apps/api/src/
 │   └── schema.ts          # Table definitions and relations
 ├── middleware/
 │   ├── auth.ts            # Authentication and authorization guards
-│   ├── error.ts           # Global error handler
+│   ├── async-handler.ts   # Wrap async route callbacks; forward rejections to Hono
+│   ├── error-handler.ts   # Global error and not-found response handlers
 │   └── cors.ts            # CORS configuration for frontend origin
+├── errors/
+│   └── app-error.ts      # Expected API errors with status, message, optional details
+├── lib/
+│   └── api-response.ts   # Standard success and error response helpers
 ├── routes/
 │   ├── certificates.ts    # Certificate endpoints (issue, get, revoke, verify)
 │   ├── events.ts          # Event management endpoints

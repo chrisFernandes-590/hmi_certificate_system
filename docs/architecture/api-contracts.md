@@ -1,66 +1,119 @@
 # API Contracts & Endpoint Specification: HMI Certificate System
 
-## 1. Verified API Implementation
+## 1. Implemented Endpoint
 
-The backend API server (`apps/api/src/index.ts`) is running Hono on Node.js at port 3000. Currently, only a single root endpoint is implemented in source code.
-
----
+The Hono API currently exposes one endpoint.
 
 ### `GET /`
 
-- **Endpoint**: `/`
-- **HTTP Method**: `GET`
-- **Purpose**: Root health check / basic connectivity verification.
-- **Implementation**: Defined in `apps/api/src/index.ts:L6-L8`.
-- **Authentication**: None (public).
-- **Request Headers**: None required.
-- **Request Parameters / Body**: None.
-- **Response**:
-  - **Status Code**: `200 OK`
-  - **Content-Type**: `text/plain; charset=UTF-8`
-  - **Body**: `"Hello Hono!"`
-- **Validation**: None.
-- **Error Handling**: Standard Hono default exception handling.
+- **Purpose**: Basic connectivity check.
+- **Authentication**: None.
+- **Response**: `200 OK`, `application/json`:
 
----
+```json
+{
+  "success": true,
+  "data": { "message": "Hello Hono!" }
+}
+```
 
-## 2. Planned API Contracts
+## 2. Response Conventions
 
-The following API contracts represent anticipated endpoints required by the certificate domain. None of these endpoints are currently implemented.
+Successful responses use `successResponse(c, data, statusCode?)`. The status
+defaults to `200`; use a 2xx status such as `201` for a newly created resource.
 
-| Endpoint | Method | Planned Purpose | Status | Auth Required |
-| :--- | :--- | :--- | :--- | :--- |
-| `/api/certificates` | `POST` | Create and issue new certificate(s) | Planned | Yes (Admin/Issuer) |
-| `/api/certificates` | `GET` | List or filter certificates | Planned | Yes (Admin/Issuer) |
-| `/api/certificates/:id` | `GET` | Fetch certificate details | Planned | Yes (Admin/Issuer) |
-| `/api/certificates/verify/:code` | `GET` | Public certificate verification | Planned | No (Public) |
-| `/api/certificates/:id/pdf` | `GET` | Generate and download certificate PDF | Planned | Optional/Token-based |
-| `/api/certificates/:id/revoke` | `PATCH` | Revoke an issued certificate | Planned | Yes (Admin) |
-| `/api/events` | `GET` / `POST` | Manage associated events | Planned | Yes (Admin) |
-| `/api/participants` | `GET` / `POST` | Manage participant records | Planned | Yes (Admin) |
+```json
+{
+  "success": true,
+  "data": { "id": "example-id" }
+}
+```
 
----
+Failed responses use a 4xx or 5xx HTTP status and the `errorResponse` envelope.
+`details` is omitted when it is not provided.
 
-## 3. Anticipated Error Handling & Validation Standards
-
-When implementing future API routes, follow these conventions:
-
-- **Validation**: Use Zod (`zod@^4.6.6` is installed in `apps/api`) via Hono's Zod validator middleware (`@hono/zod-validator` or native schema validation).
-- **Standard Error Response**:
-  ```json
-  {
-    "success": false,
-    "error": {
-      "code": "VALIDATION_ERROR",
-      "message": "Human-readable error description",
-      "details": []
-    }
+```json
+{
+  "success": false,
+  "error": {
+    "statusCode": 404,
+    "message": "Certificate not found",
+    "details": { "certificateId": "example-id" }
   }
-  ```
-- **HTTP Status Codes**:
-  - `200 OK` / `201 Created` for successful operations.
-  - `400 Bad Request` for schema validation failures.
-  - `401 Unauthorized` for missing or invalid authentication credentials.
-  - `403 Forbidden` for insufficient role permissions.
-  - `404 Not Found` for nonexistent certificates, events, or participants.
-  - `500 Internal Server Error` for unhandled runtime exceptions.
+}
+```
+
+The `statusCode` in the body matches the HTTP status. Never mark a failed
+operation as a success. Only include client-safe information in `details`.
+
+## 3. `AppError`
+
+`AppError` extends `Error` and takes an HTTP error status, a client-facing
+message, and optional client-safe details. Throw it from a route or service;
+the global handler converts it to the standardized error response.
+
+```typescript
+throw new AppError(404, 'Certificate not found')
+
+throw new AppError(400, 'Invalid certificate data', [
+  { field: 'participantId', message: 'Required' }
+])
+```
+
+## 4. Async Routes and Global Error Handling
+
+Wrap new Hono route callbacks with `asyncHandler`. It preserves the callback's
+parameter and response types and lets rejected async work reach Hono's global
+error handler. Do not add route-level `try-catch` blocks just to format errors.
+
+```typescript
+app.get('/api/certificates/:id', asyncHandler(async (c) => {
+  const certificate = await loadCertificate(c.req.param('id'))
+  if (!certificate) throw new AppError(404, 'Certificate not found')
+
+  return successResponse(c, certificate)
+}))
+```
+
+`index.ts` registers `apiErrorHandler` with `app.onError` and
+`apiNotFoundHandler` with `app.notFound` before route definitions. The global
+handler:
+
+- Returns `AppError` with its status, message, and optional details.
+- Converts thrown Zod validation errors to `400 Validation failed`, exposing
+  only issue paths and messages.
+- Converts Hono `HTTPException` 4xx errors to the same envelope and status.
+- Logs unexpected errors server-side and returns a generic `500 Internal
+  server error` response without a stack trace or internal error details.
+- Returns unknown routes as `404 Route not found` in the same envelope.
+
+Hono awaits route handlers and forwards rejected promises to `onError`.
+`asyncHandler` provides a consistent async route signature; it does not replace
+the global error handler.
+
+## 5. Adding Endpoints
+
+Add a route in the relevant `apps/api/src/routes/` module and mount it from
+`index.ts`. For each endpoint:
+
+1. Keep its existing validation, authorization, and business logic.
+2. Wrap async handlers in `asyncHandler`.
+3. Return successful data through `successResponse`; choose an appropriate 2xx
+   status when needed.
+4. Throw `AppError` for expected failures, using an appropriate 4xx status and
+   client-safe message/details. Let unexpected errors propagate to `onError`.
+5. Avoid manual response envelopes and redundant `try-catch` blocks.
+
+The following certificate, event, and participant endpoints are planned and are
+not currently implemented:
+
+| Endpoint | Method | Purpose | Auth |
+| :--- | :--- | :--- | :--- |
+| `/api/certificates` | `POST` | Create and issue certificates | Admin/Issuer |
+| `/api/certificates` | `GET` | List or filter certificates | Admin/Issuer |
+| `/api/certificates/:id` | `GET` | Fetch certificate details | Admin/Issuer |
+| `/api/certificates/verify/:code` | `GET` | Verify a certificate | Public |
+| `/api/certificates/:id/pdf` | `GET` | Download certificate PDF | Optional/token-based |
+| `/api/certificates/:id/revoke` | `PATCH` | Revoke a certificate | Admin |
+| `/api/events` | `GET` / `POST` | Manage events | Admin |
+| `/api/participants` | `GET` / `POST` | Manage participants | Admin |
