@@ -75,3 +75,26 @@ This document captures architectural and technology decisions established in the
   - `apps/web/.oxlintrc.json`
   - `apps/web/package.json`
 - **Known Trade-offs**: Fast execution speed, but advanced type-aware rules require additional configuration and plugins.
+
+---
+
+### ADR-007: Target AWS Cloud Compute Model and Infrastructure
+
+- **Decision**: Deploy the main application and backend API to AWS cloud compute (EC2 or equivalent containerized/virtual compute in a custom VPC) with Amazon RDS for PostgreSQL, Amazon S3 for private certificate storage, CloudWatch, and CloudFormation for IaC.
+- **Reason**: Complies with faculty cloud architecture requirements and avoids architectural mismatch. Prevents replacing the primary workload with an unrequested all-serverless paradigm while maintaining cost awareness.
+- **Relevant Files**:
+  - `AGENTS.md` (Sections 2, 8, 9, 10)
+  - `docs/architecture/overview.md`
+  - `docs/agent-context/integrations.md`
+- **Known Trade-offs**: Requires VPC subnet planning, security group configuration, IAM least-privilege policies, and cost monitoring (AWS Budgets) to minimize recurring expenditure.
+
+---
+
+### ADR-008: Authentication Provider Independence and Decoupled Identity
+
+- **Decision**: Decouple application identity from authentication providers. Use immutable UUID primary keys in PostgreSQL for user identity and keep provider identifiers (such as Cognito subject IDs) in external identity mappings rather than using emails or provider IDs as primary keys.
+- **Reason**: Enables initial local development authentication (email/password) while ensuring seamless future migration to Amazon Cognito User Pools without re-keying database relations, invalidating event memberships, or corrupting certificate ownership.
+- **Relevant Files**:
+  - `AGENTS.md` (Sections 3, 4)
+  - `apps/api/src/db/schema/users.ts`
+- **Known Trade-offs**: Requires backend token validation and explicit mapping logic between verified identity provider tokens and application user profiles.

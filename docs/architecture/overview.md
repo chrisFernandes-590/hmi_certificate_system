@@ -2,24 +2,32 @@
 
 ## 1. System Summary
 
-The **HMI Certificate System** is structured as a TypeScript monorepo using `pnpm` workspaces. It consists of two primary application packages:
-- `apps/api`: A backend REST API server built with Hono and running on Node.js.
-- `apps/web`: A frontend Single Page Application (SPA) built with React 19, Vite, and Tailwind CSS v4.
-
-An additional workspace directory, `packages/shared`, exists for shared domain types and validation schemas across frontend and backend, but currently contains no files.
+The **HMI Certificate System** is a Title Certificate Generation and Verification Management System structured as a TypeScript monorepo using `pnpm` workspaces. It consists of:
+- `apps/api`: A backend REST API server built with Hono and running on Node.js, providing shared API contracts for both web and future mobile clients.
+- `apps/web`: A frontend Single Page Application (SPA) built with React 19, Vite, Tailwind CSS v4, and shadcn/ui.
+- `packages/shared`: Shared TypeScript types, schemas, and API contracts.
+- **Future Mobile Client**: Planned React Native / Expo application consuming the backend API.
+- **Target Deployment**: AWS cloud compute (EC2 or equivalent in a custom VPC) with Amazon RDS for PostgreSQL, Amazon S3 for private certificate storage, Amazon Cognito for production authentication, and CloudFormation for IaC.
 
 ```mermaid
 graph TD
     User["Client Browser"]
+    Mobile["Future Mobile App<br/>(React Native / Expo)"]
     Web["Frontend SPA (apps/web)<br/>React 19 + Vite + Tailwind v4"]
-    API["Backend API (apps/api)<br/>Hono on Node.js (:3000)"]
-    DB[("PostgreSQL Database<br/>Neon Serverless")]
-    Shared["packages/shared<br/>(Planned Shared Types)"]
+    API["Backend API (apps/api)<br/>Hono on Node.js (EC2 compute)"]
+    DB[("PostgreSQL Database<br/>Neon Dev / Amazon RDS Prod")]
+    S3[("Amazon S3<br/>Private Certificate Storage")]
+    Cognito["Amazon Cognito<br/>(Target Production IdP)"]
+    Shared["packages/shared<br/>(Shared Types & Contracts)"]
 
     User -->|HTTP / HTML / JS| Web
-    Web -.->|HTTP / REST (Planned)| API
-    API -->|pg / Drizzle ORM (Planned)| DB
+    Mobile -.->|HTTP / REST| API
+    Web -.->|HTTP / REST| API
+    API -->|Drizzle ORM / pg| DB
+    API -.->|AWS SDK / IAM Role| S3
+    API -.->|Token Validation| Cognito
     Web -.->|Imports| Shared
+    Mobile -.->|Imports| Shared
     API -.->|Imports| Shared
 ```
 
@@ -31,8 +39,8 @@ graph TD
 - **Runtime Environment**: Node.js with native ES Modules (`"type": "module"`).
 - **HTTP Framework**: [Hono](https://hono.dev/) (`hono@^4.13.13`) with `@hono/node-server` (`^2.1.3`).
 - **Entry Point**: `apps/api/src/index.ts`.
-- **Current State**: A basic HTTP server listening on port 3000 with a single health route (`GET /` responding with `"Hello Hono!"`).
-- **Data Layer Config**: `apps/api/drizzle.config.ts` targets PostgreSQL via Drizzle Kit. Database schema file (`src/db/schema.ts`) is referenced in config but not yet created on disk.
+- **Target Compute**: EC2 or equivalent cloud compute in a custom VPC.
+- **Data Layer Config**: `apps/api/drizzle.config.ts` targets PostgreSQL via Drizzle Kit. Database schema modules are implemented under `apps/api/src/db/schema/` with connection pool in `apps/api/src/db/index.ts`.
 
 ### B. Frontend Application (`apps/web`)
 - **Runtime & Bundler**: [Vite](https://vite.dev/) (`vite@^8.3.0`) with `@vitejs/plugin-react` (`^6.1.1`).
@@ -40,32 +48,33 @@ graph TD
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite@^4.3.3`, `tailwindcss@^4.3.3`) and `tw-animate-css`.
 - **Design System & Components**: Shadcn configuration (`components.json`) using the Nova style preset and `@base-ui/react` primitives.
 - **Entry Point**: `apps/web/index.html` mounting `apps/web/src/main.tsx`.
-- **Current State**: Displays the default starter Vite/React counter template in `apps/web/src/App.tsx`. Includes one generated Shadcn UI component (`apps/web/src/components/ui/button.tsx`) and CSS theme variables in `apps/web/src/index.css`.
 
 ### C. Shared Package (`packages/shared`)
 - **Directory**: `packages/shared`.
-- **Current State**: Empty folder. A `package.json` manifest and shared TypeScript definitions (such as Zod schemas and certificate DTOs) are planned but not yet implemented.
+- **Purpose**: Workspace package for cross-cutting types, Zod schemas, and API response/error contracts shared across web, mobile, and backend.
 
 ---
 
 ## 3. Communication Patterns
 
-### Frontend to Backend
-- **Planned Pattern**: The frontend will communicate with the backend over HTTP/REST JSON endpoints using `@tanstack/react-query` and fetch/client utilities.
-- **Current Pattern**: No frontend-to-backend communication is currently implemented. The frontend starter app (`App.tsx`) and backend API (`index.ts`) operate independently.
+### Frontend & Mobile to Backend
+- **Pattern**: Web client and future React Native / Expo client communicate with the backend over HTTP/REST JSON endpoints using predictable success/error contract envelopes.
+- **Current State**: Backend starter route `GET /` is operational; client-to-backend integration is in development.
 
 ### Backend to Database
-- **Planned Pattern**: Database access will use Drizzle ORM queries and migrations over PostgreSQL.
-- **Current Pattern**: Drizzle is configured in `apps/api/drizzle.config.ts` reading `DATABASE_URL` from `apps/api/.env`. However, no schema or migration files exist, and no database connection is initialized at runtime in `apps/api/src/index.ts`.
+- **Pattern**: Database access uses Drizzle ORM queries and migrations over PostgreSQL (Neon Serverless in development, Amazon RDS in production).
+- **Current State**: Connection pool and full relational schemas (users, events, certificates, etc.) are established in `apps/api/src/db/`.
 
 ---
 
 ## 4. Architectural Boundaries
 
 1. **Frontend Isolation**: The frontend in `apps/web` must not have direct database access or require backend Node.js modules. It interacts strictly via HTTP APIs.
-2. **Backend Domain Isolation**: The backend API in `apps/api` owns data persistence, business invariants, authorization, and certificate signing/issuance logic.
-3. **Shared Contracts**: When domain types and validation schemas are extracted, they should reside in `packages/shared` so both frontend form validation and backend request validation stay strictly in sync.
-4. **Environment Variables**: Sensitive configuration (`DATABASE_URL`, future JWT secrets) remains confined to `apps/api/.env` and must never be exposed to the client bundle.
+2. **Cross-Platform API Independence**: The backend API contracts must remain independent of browser APIs (`window`, browser cookies, localStorage) to support future React Native / Expo clients.
+3. **Backend Domain & Authorization Authority**: The backend API in `apps/api` owns data persistence, business invariants, authorization, and certificate signing/issuance logic. Never trust client-supplied roles or ownership claims.
+4. **Identity Provider Decoupling**: Application user profiles and event authorizations use immutable UUID primary keys, cleanly decoupled from external auth providers (Cognito, OAuth).
+5. **Private Storage Boundary**: Certificate files are kept private in Amazon S3. Access is authorized by the backend via short-lived presigned URLs or controlled streaming; direct public bucket access is forbidden.
+6. **Environment & Secret Protection**: Sensitive credentials (`DATABASE_URL`, AWS secret keys) remain strictly in server environments and must never leak into client bundles.
 
 ---
 

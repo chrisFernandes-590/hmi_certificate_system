@@ -12,13 +12,19 @@
 
 ---
 
-## 2. Unintegrated Services (Current Status)
+## 2. Planned Target AWS Architecture & External Integrations
 
-The following services are commonly used in certificate systems but are **not currently integrated or configured** in this codebase:
+Per `AGENTS.md` (Sections 2, 8, 9, 10), the target deployment environment is AWS conforming to faculty cloud architecture guidelines. These services are implemented iteratively as tasks demand, not prematurely:
 
-| Integration Area | Status | Notes |
-| :--- | :--- | :--- |
-| **Object / Cloud Storage** | None | No AWS S3, Cloudflare R2, or blob storage SDKs are installed. PDF storage is unconfigured. |
-| **Email Delivery** | None | No email client (Resend, SendGrid, Nodemailer) is installed for delivering certificates. |
-| **External Auth / OAuth** | None | No third-party authentication services (Clerk, Auth0, Supabase) are configured. |
-| **External QR / PDF Services** | None | Generation is intended to be handled locally/in-process once dependencies are added. |
+| Service | Target Architecture Role | Current Status | Notes & Constraints |
+| :--- | :--- | :--- | :--- |
+| **Compute (EC2 / VPC)** | Main application & Hono backend | Planned (Node.js local) | Main app runs on EC2 or equivalent cloud compute within a custom VPC (public/private subnets, security groups, IGW). Do not replace with an entirely serverless architecture. |
+| **Database (Amazon RDS)** | Production PostgreSQL database | Dev (Neon PostgreSQL) | Target is Amazon RDS for PostgreSQL located in a private subnet, accessible only by the application security group. |
+| **Storage (Amazon S3)** | Private certificate file storage | Planned (Local / Mock) | Buckets are private. No public object URLs; files accessed via backend authorization and short-lived presigned URLs. IAM roles used on EC2 (no hardcoded keys). |
+| **Identity (Amazon Cognito)** | Production user authentication & User Pools | Dev (Local email/password) | Target production IdP. Backend validates Cognito tokens and maps verified subject to internal application user UUIDs. |
+| **Secrets & Config (SSM)** | Secrets & parameter management | Dev (`.env` files) | Target is AWS Systems Manager Parameter Store or Secrets Manager. Server secrets must never be exposed to frontend bundles (`VITE_`). |
+| **Monitoring (CloudWatch)** | Application logs, metrics & alarms | Planned | Structured application logging and meaningful operational alerts. |
+| **Cost Alerts (AWS Budgets)**| Budget threshold monitoring | Planned | Cost guardrails to prevent unexpected AWS cloud charges. |
+| **IaC (CloudFormation)** | Infrastructure as code | Planned | Infrastructure must ultimately be reproducible via CloudFormation templates. |
+| **Notifications (SNS)** | Operational notifications | Planned | Meaningful alerts for operational events. |
+
