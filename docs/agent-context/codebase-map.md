@@ -70,6 +70,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/index.html` | HTML container mounting React `#root` | Implemented |
 | `apps/web/src/main.tsx` | Frontend entry point mounting `<App />` via `createRoot` | Implemented |
 | `apps/web/src/App.tsx` | Auth pages, event routes and protected account route | Implemented |
+| `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
 | `apps/web/src/features/events/events.tsx` | Event list/detail/create/edit views and TanStack Query operations | Implemented |
 | `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |

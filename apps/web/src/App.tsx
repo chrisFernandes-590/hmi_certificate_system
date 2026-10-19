@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
-import { apiRequest, type User } from './lib/api-client'
+import { apiRequest } from './lib/api-client'
 import { useAuth } from './lib/use-auth'
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@hmi/shared'
 import './App.css'
 import { EventDetailsPage, EventFormPage, EventListPage } from './features/events/events'
+import { LoginPage } from './features/auth/pages/LoginPage'
+import { SignupPage } from './features/auth/pages/SignupPage'
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -15,58 +18,6 @@ function Protected({ children }: { children: ReactNode }) {
 
 function AuthLayout({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
   return <main className="auth-shell"><section className="auth-card"><p className="eyebrow">HMI CERTIFICATES</p><h1>{title}</h1>{children}{footer && <div className="auth-footer">{footer}</div>}</section></main>
-}
-
-function FormPage({ kind }: { kind: 'login' | 'register' | 'forgot' | 'reset' }) {
-  const navigate = useNavigate()
-  const [query] = useSearchParams()
-  const { refresh } = useAuth()
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
-  const config = {
-    login: { title: 'Sign in', path: '/login', button: 'Sign in' },
-    register: { title: 'Create your account', path: '/register', button: 'Create account' },
-    forgot: { title: 'Reset your password', path: '/forgot-password', button: 'Send reset link' },
-    reset: { title: 'Choose a new password', path: '/reset-password', button: 'Update password' },
-  }[kind]
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setBusy(true); setError(''); setMessage('')
-    const form = new FormData(event.currentTarget)
-    const rawBody: Record<string, string> = Object.fromEntries(form.entries()) as Record<string, string>
-    if (kind === 'reset') rawBody.token = query.get('token') ?? ''
-    const schemas = { login: loginSchema, register: registerSchema, forgot: forgotPasswordSchema, reset: resetPasswordSchema }
-    const parsed = schemas[kind].safeParse(rawBody)
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Please check the form values.')
-      setBusy(false)
-      return
-    }
-    try {
-      const result = await apiRequest<{ user?: User; message?: string }>(config.path, { method: 'POST', body: JSON.stringify(parsed.data) })
-      if (kind === 'login') { await refresh(); navigate('/account') }
-      else if (kind === 'register') setMessage('If the address can be registered, a verification email has been sent. Open its link to verify your email before signing in.')
-      else if (kind === 'forgot') setMessage(result.message ?? 'If an account exists for that address, reset instructions have been sent.')
-      else setMessage('Password updated. You can now sign in.')
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Request failed. Please try again.') }
-    finally { setBusy(false) }
-  }
-  return <AuthLayout title={config.title} footer={kind === 'login' ? <><Link to="/register">Create account</Link><Link to="/forgot-password">Forgot password?</Link></> : kind === 'register' ? <Link to="/login">Already have an account? Sign in</Link> : <Link to="/login">Back to sign in</Link>}>
-    <form className="auth-form" onSubmit={submit}>
-      {kind === 'register' && <Field label="Name" name="name" autoComplete="name" required />}
-      {kind !== 'reset' && <Field label="Email" name="email" type="email" autoComplete="email" required />}
-      {(kind === 'login' || kind === 'register' || kind === 'reset') && <Field label={kind === 'reset' ? 'New password' : 'Password'} name={kind === 'reset' ? 'password' : 'password'} type="password" autoComplete={kind === 'login' ? 'current-password' : 'new-password'} minLength={kind === 'login' ? 1 : 12} maxLength={128} required />}
-      {error && <p className="notice error" role="alert">{error}</p>}
-      {message && <p className="notice success" role="status">{message}</p>}
-      <button disabled={busy} type="submit">{busy ? 'Please wait…' : config.button}</button>
-    </form>
-  </AuthLayout>
-}
-
-function Field(props: { label: string; name: string; type?: string; autoComplete: string; required?: boolean; minLength?: number; maxLength?: number }) {
-  const { label, ...inputProps } = props
-  return <label className="field">{label}<input {...inputProps} /></label>
 }
 
 function VerifyPage() {
@@ -102,10 +53,10 @@ function AppRoutes() {
   const { user } = useAuth()
   return <Routes>
     <Route path="/" element={<Navigate to={user ? '/account' : '/login'} replace />} />
-    <Route path="/login" element={<FormPage kind="login" />} />
-    <Route path="/register" element={<FormPage kind="register" />} />
-    <Route path="/forgot-password" element={<FormPage kind="forgot" />} />
-    <Route path="/reset-password" element={<FormPage kind="reset" />} />
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/register" element={<SignupPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/verify-email" element={<VerifyPage />} />
     <Route path="/account" element={<Protected><AccountPage /></Protected>} />
     <Route path="/events" element={<Protected><EventListPage /></Protected>} />

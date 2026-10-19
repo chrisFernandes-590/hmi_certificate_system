@@ -17,6 +17,9 @@ apps/web/src/
 ├── App.tsx               # Auth routes, forms, verification, protected account page
 ├── App.css               # Authentication layout styles
 ├── index.css             # Tailwind v4 directives, design tokens, theme variables
+├── features/
+│   ├── auth/              # Login, signup, forgot-password and reset-password pages/components/styles
+│   └── events/            # Event list, detail and form pages
 ├── assets/               # Static image assets (hero.png, react.svg, vite.svg)
 ├── components/
 │   └── ui/
@@ -30,7 +33,7 @@ apps/web/src/
 ```
 
 ### Current View (`src/App.tsx`)
-Implements registration, login, email verification, recovery/reset, session restoration, logout, a protected account view, and protected event list/detail/create/edit pages. Participant and certificate workflows remain unimplemented.
+Routes login, signup, forgot-password, reset-password and email verification pages, plus session restoration, logout, a protected account view, and protected event list/detail/create/edit pages. The `features/auth` module owns the auth screens, shared split layout, and auth design tokens. Participant and certificate workflows remain unimplemented.
 
 ---
 
@@ -39,6 +42,7 @@ Implements registration, login, email verification, recovery/reset, session rest
 ### Design Tokens & Theme (`src/index.css`)
 - **Engine**: Tailwind CSS v4 loaded via `@import "tailwindcss";` and `@tailwindcss/vite`.
 - **Typography**: Geist font family loaded via `@import "@fontsource-variable/geist";`.
+- **Auth Theme**: `features/auth/styles/tokens.css` defines authentication colors, typography, spacing, layout, and artwork tokens consumed by `auth.css`.
 - **Color System**: Theme tokens defined in OKLCH color space with full light and dark mode mappings (`@custom-variant dark (&:is(.dark *));`).
 - **Animations**: `tw-animate-css` imported for micro-interactions.
 
