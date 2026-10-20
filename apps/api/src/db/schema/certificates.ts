@@ -5,6 +5,7 @@ import {
   timestamp,
   pgEnum,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { participants } from "./participants.js";
 import { events } from "./events.js";
@@ -81,6 +82,8 @@ export const certificates = pgTable(
       table.participantId,
       table.issuedAt
     ),
+    // One credential is issued per participant for each event, even after revocation.
+    uniqueIndex("certificates_event_participant_uidx").on(table.eventId, table.participantId),
   ]
 );
 

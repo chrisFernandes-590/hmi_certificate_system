@@ -1,85 +1,57 @@
 # Frontend Architecture Map (`apps/web`): HMI Certificate System
 
-## 1. Application Overview
+## Application Overview
 
-The frontend is a Single-Page Application (SPA) built with React 19, TypeScript, Vite, and Tailwind CSS v4. It is housed in `apps/web`.
+The web SPA uses React 19, TypeScript, Vite, React Router, TanStack Query,
+Tailwind CSS v4, and the existing authentication styles. `src/main.tsx` provides
+the shared QueryClient; `src/App.tsx` defines public and authenticated routes.
+The browser uses same-origin `/api` requests with the existing HttpOnly local
+session cookie. Cognito is not configured.
 
-- **Entry Point**: `apps/web/index.html` loads `apps/web/src/main.tsx`.
-- **Mounting**: `main.tsx` mounts `<App />` into `document.getElementById('root')` wrapped in `<StrictMode>`.
+## Feature Areas
 
----
+| Path | Responsibility |
+| --- | --- |
+| `src/features/auth/` | Login, registration, recovery, email verification |
+| `src/features/events/events.tsx` | Event list/details and create/edit forms |
+| `src/features/admin/AdminWorkspace.tsx` | Authenticated admin dashboard, events, four-step creation wizard, event detail, participants, certificate registry, activity log, templates, settings, and session-persisted preview data |
+| `src/features/admin/admin-workspace.css` | Responsive admin workspace layout, tables, dialogs, certificate preview states, and visual tokens |
+| `src/features/admin/csv-import.ts` | Streaming CSV parser for participant uploads with progress callbacks, validation, and a row cap |
+| `src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant search, attendance updates, individual/bulk certificate issue, event certificate search, status/revocation |
+| `src/features/certificates/certificates.tsx` | Owner certificate listing/search, authorized PDF preview/download, public verification page |
+| `src/features/design-system/` | Certify theme tokens, shared status pills, print-style certificate preview, and participant/admin layouts |
+| `src/lib/api-client.ts` | Standard JSON envelope client plus authenticated PDF blob downloads |
+| `src/App.css` | Event, participant, certificate table and verification layouts |
 
-## 2. Component Organization & Current UI State
+## Routes and Authorization
 
-```
-apps/web/src/
-├── main.tsx              # Application bootstrap
-├── App.tsx               # Auth routes, forms, verification, protected account page
-├── App.css               # Authentication layout styles
-├── index.css             # Tailwind v4 directives, design tokens, theme variables
-├── features/
-│   ├── auth/              # Login, signup, forgot-password and reset-password pages/components/styles
-│   └── events/            # Event list, detail and form pages
-├── assets/               # Static image assets (hero.png, react.svg, vite.svg)
-├── components/
-│   └── ui/
-│       └── button.tsx    # Shadcn Button component built on @base-ui/react
-└── lib/
-    ├── api-client.ts      # Standardized envelope client
-    ├── auth.tsx           # Session context provider
-    ├── auth-context.ts    # Shared auth context type/value
-    ├── use-auth.ts        # Auth context hook
-    └── utils.ts           # Utility functions (cn helper)
-```
+- Successful sign-in and the authenticated `/` route land on `/admin/dashboard`.
+- `/events/:eventId`: authenticated event detail. Admin-only management controls
+  are shown only when API data reports `accessRole: "admin"`; the API remains
+  the authorization boundary.
+- `/admin/*`: authenticated administrative preview workspace. Mock actions are
+  session-persisted and explicitly labeled when they do not call the API; real
+  `/events` and `/certificates` routes continue to use the backend.
+- `/certificates`: authenticated user's own certificates and owner-authorized
+  PDF actions.
+- `/verify/:token`: public verification, no login required.
 
-### Current View (`src/App.tsx`)
-Routes login, signup, forgot-password, reset-password and email verification pages, plus session restoration, logout, a protected account view, and protected event list/detail/create/edit pages. The `features/auth` module owns the auth screens, shared split layout, and auth design tokens. Participant and certificate workflows remain unimplemented.
+TanStack Query keys include event IDs and active search/filter/page values.
+Attendance, issue, and revoke mutations invalidate their dependent event and
+certificate queries. Zod validates issue/revoke inputs; existing event forms
+continue to use their shared Zod schemas. React Hook Form is installed but the
+current form modules do not use it.
 
----
+The admin preview streams CSV participant files in-browser, limits uploads to
+20 MB and 20,000 participant rows, yields during parsing, and renders only the
+first 50 imported rows while validating the full file. XLSX is accepted by the
+picker but reports that spreadsheet parsing support is not configured.
+Issuance, email delivery, PDF download, and template editing remain
+preview-only unless the user follows the corresponding existing API-backed
+flow.
 
-## 3. UI Component System & Styling
+## Development and Validation
 
-### Design Tokens & Theme (`src/index.css`)
-- **Engine**: Tailwind CSS v4 loaded via `@import "tailwindcss";` and `@tailwindcss/vite`.
-- **Typography**: Geist font family loaded via `@import "@fontsource-variable/geist";`.
-- **Auth Theme**: `features/auth/styles/tokens.css` defines authentication colors, typography, spacing, layout, and artwork tokens consumed by `auth.css`.
-- **Color System**: Theme tokens defined in OKLCH color space with full light and dark mode mappings (`@custom-variant dark (&:is(.dark *));`).
-- **Animations**: `tw-animate-css` imported for micro-interactions.
-
-### Reusable Components (`src/components/ui/`)
-- **`button.tsx`**: Uses `@base-ui/react/button` and `class-variance-authority` (`cva`).
-  - **Variants**: `default`, `outline`, `secondary`, `ghost`, `destructive`, `link`.
-  - **Sizes**: `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`, `icon-sm`, `icon-lg`.
-  - **Utility**: Merges Tailwind classes via `cn` from `src/lib/utils.ts`.
-
----
-
-## 4. Routing, State & Data Fetching Status
-
-| Capability | Installed Dependency | Current Implementation Status |
-| :--- | :--- | :--- |
-| **Routing** | `react-router-dom@^7.18.4` | Wired for auth pages plus protected account and event routes. |
-| **Server State / API Caching** | `@tanstack/react-query@^5.104.1` | Wired in `main.tsx`; event queries and mutations invalidate the event cache. |
-| **Form Management** | `react-hook-form@^7.90.0`, `@hookform/resolvers@^5.9.1` | **Not wired**: No form components or form hooks exist. |
-| **Client Validation** | Zod 4 via `@hmi/shared` | Auth forms and event create/edit forms use the same schemas as API routes. |
-| **Auth State** | React context | Session restored through `/api/auth/me`; token stays in an HttpOnly cookie. |
-
----
-
-## 5. Development & Build Commands
-
-Run commands from the repository root:
-
-```bash
-# Start Vite development server
-pnpm --filter web dev
-
-# Run TypeScript compilation and Vite production bundle
-pnpm --filter web build
-
-# Run Oxlint
-pnpm --filter web lint
-
-# Preview production build
-pnpm --filter web preview
-```
+From the repository root, run `pnpm --filter web dev`, `pnpm --filter web
+build`, and `pnpm --filter web lint`. There is no separate frontend unit-test
+script configured.

@@ -1,84 +1,43 @@
 # Backend Architecture Map (`apps/api`): HMI Certificate System
 
-## 1. Application Overview
+## Application Overview
 
-The backend application is a Node.js REST API service built with Hono (`hono@^4.13.13`) and `@hono/node-server` (`^2.1.3`). It is located in `apps/api`.
+The API is a Node.js/TypeScript Hono application. `src/index.ts` wires the
+Drizzle repositories, local authentication, event/participant/certificate
+services, and the S3-compatible storage adapter. `src/app.ts` creates the
+testable Hono app and mounts common error handling and route modules.
 
-- **Entry Point**: `apps/api/src/index.ts`.
-- **Runtime Port**: Configured to 3000 (referenced in `index.ts:L12` and `.env`).
-- **Compilation Output**: Compiled to `apps/api/dist/index.js` via `tsc`.
+## Implemented Layers
 
----
+| Layer | Location | Responsibility |
+| --- | --- | --- |
+| HTTP app | `src/app.ts` | Hono composition, response/error handlers, route registration |
+| Auth | `src/middleware/auth.ts`, `src/services/auth/` | Verified local session via HttpOnly cookie or native bearer mode; Cognito is not configured |
+| Event API | `src/routes/events.ts`, `src/services/events/` | Event CRUD, membership-scoped admin authorization |
+| Participant API | `src/routes/participants.ts`, `src/services/participants/` | Event discovery/registration, participant admin/attendance, owner certificate metadata |
+| Certificate API | `src/routes/certificates.ts`, `src/services/certificates/` | Individual/bulk issue, event-admin listing/search, owner-only PDF stream, public verification, revocation |
+| Persistence | `src/repositories/`, `src/db/` | Drizzle/PostgreSQL queries, transactions, audit and asset metadata |
+| Storage | `src/services/certificates/certificate-storage.ts` | `CertificateStorage` interface and S3-compatible AWS SDK adapter |
+| Migrations | `drizzle/` | Tracked schema changes; `0003_certificate_event_recipient_unique.sql` enforces one certificate per event participant |
 
-## 2. Verified Implementation & Route Registration
+## Certificate Endpoints
 
-`src/index.ts` wires the database repositories, event service, local auth provider, email
-adapter, and HTTP server. `src/app.ts` creates the Hono app, registers global
-error and not-found handlers, then mounts the health, auth, and event routes. See
-`docs/architecture/api-contracts.md` for endpoint and response details.
+- `POST /api/events/:eventId/certificates` and `/bulk`: event admin, CSRF Origin checked for browser requests.
+- `GET /api/events/:eventId/certificates`: event-admin scoped search and pagination.
+- `GET /api/certificates/:certificateId/pdf`: authenticated certificate owner only; streams a checksum-verified PDF.
+- `GET /api/verify/:token`: public and database-backed; returns minimal valid/revoked/not-found details.
+- `PATCH /api/certificates/:certificateId/revoke`: event admin, CSRF checked, audit record written transactionally.
 
----
+See `docs/architecture/api-contracts.md` for request/response envelopes and
+`docs/agent-context/certificate-workflow.md` for the UI and storage lifecycle.
 
-## 3. Architecture Layers & Status
+## Configuration and Tests
 
-| Layer | Implementation Status | Details |
-| :--- | :--- | :--- |
-| **HTTP Server** | Implemented | Hono app mounted using `@hono/node-server` on port 3000. |
-| **Routing** | Implemented | `createApp` mounts health, `/api/auth/*`, and `/api/events/*` routes. |
-| **Middleware** | Implemented | Standard errors, validation, cookie/bearer auth, Origin checks, and in-memory sensitive-route throttles. |
-| **Database Access** | Implemented | `src/db/index.ts` provides Drizzle over PostgreSQL; auth records are in `src/db/schema/auth.ts`. |
-| **Validation** | Implemented | Auth request bodies use Zod and the common error envelope. |
-| **Authentication** | Implemented (local) | `LocalAuthProvider`, Drizzle repository, hashed sessions, Argon2id, and auth middleware. Cognito is future work. |
-| **Services / Business Logic**| Partially implemented | Event service validates dates and enforces event-scoped admin permissions. Certificate logic remains unimplemented. |
-| **Error Handling** | Implemented | `AppError`, validation errors, Hono 4xx exceptions, unexpected errors, and unknown routes use standardized error responses. Unexpected exceptions are logged and masked from clients. |
+Runtime configuration is validated in `src/config/auth-config.ts`. Certificate
+storage requires region and bucket; custom S3 endpoints use path-style addressing.
+Neon credentials are read by the AWS SDK default credential provider chain.
+`CERTIFICATE_PUBLIC_VERIFY_BASE_URL` defaults to `AUTH_WEB_ORIGIN/verify`.
 
----
-
-## 4. Planned Backend Structure
-
-When implementing the domain features, the backend should be organized as follows:
-
-```
-apps/api/src/
-├── index.ts               # Server startup and dependency wiring
-├── app.ts                 # Hono app factory, routes, global error handlers
-├── db/
-│   ├── index.ts           # Drizzle client instance (pg pool connection)
-│   └── schema.ts          # Table definitions and relations
-├── middleware/
-│   ├── auth.ts            # Session auth and CSRF origin guard
-│   ├── rate-limit.ts      # In-process sensitive-route throttling
-│   ├── async-handler.ts   # Wrap async route callbacks; forward rejections to Hono
-│   ├── error-handler.ts   # Global error and not-found response handlers
-│   └── cors.ts            # CORS configuration for frontend origin
-├── errors/
-│   └── app-error.ts      # Expected API errors with status, message, optional details
-├── lib/
-│   └── api-response.ts   # Standard success and error response helpers
-├── routes/
-│   ├── certificates.ts    # Certificate endpoints (issue, get, revoke, verify)
-│   ├── events.ts          # Event management endpoints
-│   └── participants.ts    # Participant management endpoints
-└── services/
-    └── auth/              # Provider abstraction, local Argon2id provider, mail adapter
-    ├── certificate.ts     # Issuance, numbering, and revocation logic (planned)
-    ├── pdf.ts             # PDF document generation (planned)
-    └── qr.ts              # QR code payload and image generation (planned)
-```
-
----
-
-## 5. Development & Build Commands
-
-Run commands from the repository root:
-
-```bash
-# Start backend in watch mode using tsx
-pnpm --filter api dev
-
-# Compile TypeScript to dist/index.js
-pnpm --filter api build
-
-# Run compiled production server
-pnpm --filter api start
-```
+Run unit/route tests with `pnpm --filter api test`; run the gated PostgreSQL
+suite with `pnpm --filter api test:db` after configuring an isolated,
+migrated `TEST_DATABASE_URL` and `TEST_DATABASE_ISOLATED=true`.

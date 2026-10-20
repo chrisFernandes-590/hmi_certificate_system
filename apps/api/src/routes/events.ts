@@ -9,6 +9,7 @@ import type { Event } from '../db/schema.js'
 import type { EventUpdateInput as DatabaseEventUpdateInput } from '../repositories/events/event-repository.js'
 import type { AuthProvider, AuthUser } from '../services/auth/types.js'
 import type { EventService } from '../services/events/event-service.js'
+import type { ParticipantService } from '../services/participants/participant-service.js'
 
 type Variables = { authUser: AuthUser; authSessionToken: string }
 async function parseBody<T extends z.ZodType>(c: Context<{ Variables: Variables }>, schema: T): Promise<z.output<T>> {
@@ -32,19 +33,23 @@ function toEventDto(event: Event): Omit<EventDto, 'accessRole'> {
   }
 }
 
-export async function listEventsResponse(c: Context<{ Variables: Variables }>, events: EventService) {
+export async function listEventsResponse(c: Context<{ Variables: Variables }>, events: EventService, participants?: ParticipantService) {
+  if (participants) {
+    const query = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20), search: z.string().trim().min(1).max(100).optional() }).safeParse(c.req.query())
+    if (!query.success) throw new AppError(400, 'Invalid query parameters', query.error.issues.map(({ path, message }) => ({ field: path.join('.'), message })))
+    const result = await participants.listDiscoverableEvents(c.get('authUser').id, query.data)
+    return successResponse(c, { ...result, events: result.events.map(({ accessRole, ...event }) => ({ ...toEventDto(event as Event), accessRole, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize })
+  }
   const accessibleEvents = await events.listAccessible(c.get('authUser').id)
-  return successResponse(c, {
-    events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })),
-  })
+  return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) })
 }
 
-export function createEventRoutes(auth: AuthProvider, events: EventService, webOrigin: string) {
+export function createEventRoutes(auth: AuthProvider, events: EventService, webOrigin: string, participants?: ParticipantService) {
   const routes = new Hono<{ Variables: Variables }>()
   const requireAuth = createAuthMiddleware(auth)
   const requireCsrf = createCsrfMiddleware(webOrigin)
 
-  const listEvents = asyncHandler((c: Context<{ Variables: Variables }>) => listEventsResponse(c, events))
+  const listEvents = asyncHandler((c: Context<{ Variables: Variables }>) => listEventsResponse(c, events, participants))
 
   routes.get('/', requireAuth, listEvents)
   routes.get('', requireAuth, listEvents)
@@ -63,6 +68,10 @@ export function createEventRoutes(auth: AuthProvider, events: EventService, webO
   }))
 
   routes.get('/:eventId', requireAuth, asyncHandler(async (c) => {
+    if (participants) {
+      const result = await participants.getEventDetails(c.get('authUser').id, parseEventId(c.req.param('eventId')))
+      return successResponse(c, { event: { ...toEventDto(result.event as Event), accessRole: result.accessRole, registrationEligible: result.registrationEligible, registrationStatus: result.registrationStatus } })
+    }
     const event = await events.getAccessible(c.get('authUser').id, parseEventId(c.req.param('eventId')))
     const { accessRole, ...eventRecord } = event
     return successResponse(c, { event: { ...toEventDto(eventRecord), accessRole } })

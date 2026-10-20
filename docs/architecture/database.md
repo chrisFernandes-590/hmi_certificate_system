@@ -81,6 +81,10 @@
 - **Initial schema**: `apps/api/drizzle/0000_curved_tyger_tiger.sql`.
 - **Authentication**: `apps/api/drizzle/0001_magical_steve_rogers.sql` creates auth tables and drops legacy `users.password_hash` and `users.auth_provider` columns. The data-free legacy table is intentionally modified.
 - **Event management**: `apps/api/drizzle/0002_nasty_anthem.sql` adds `events.archived_at` and event-scoped memberships, then backfills each existing event owner as its admin. Event create plus initial membership is transactional. DELETE archives; it does not delete registration or certificate rows.
+- **Participant API**: Current participant routes reuse `participants`, `event_registrations`, `event_memberships`, `certificates`, and `certificate_assets`; no schema change or migration is needed. Registration uses the existing unique `(event_id, participant_id)` constraint to handle concurrent requests.
+- **Certificate issuance**: `apps/api/drizzle/0003_certificate_event_recipient_unique.sql` adds a unique index on `(event_id, participant_id)` so concurrent issuance cannot create duplicate certificates. A preflight raises an error if existing duplicate records need review; it does not delete or rewrite data. Certificate file metadata remains in the existing `certificate_assets` table.
+- **Configured development target (2026-10-20)**: A read-only check identified the configured `DATABASE_URL` as Neon in `NODE_ENV=development`. It found zero duplicate `(event_id, participant_id)` groups and confirmed migration `0003` is applied. The database name did not identify an isolated test database, and no `TEST_DATABASE_URL` was configured. No migration or test fixture was written to this target.
+- **Database integration tests**: Set `TEST_DATABASE_URL` to a disposable migrated database and `TEST_DATABASE_ISOLATED=true` only after confirming it is isolated. The suite refuses to run against the same host/database path as `DATABASE_URL`; it creates random fixture identities and removes only records created by the suite.
 - **Apply locally**: set `DATABASE_URL` in `apps/api/.env` and run `pnpm --filter api db:migrate` from the repository root.
 
 ### Commands
@@ -90,8 +94,12 @@
 pnpm --filter api db:migrate
 ```
 
+For an isolated database integration target, set `TEST_DATABASE_URL`, verify
+that it is disposable, then apply migrations from `apps/api` with `DATABASE_URL`
+pointing to that test target before running `pnpm test:db`.
+
 > [!WARNING]
-> Do NOT run `drizzle-kit migrate` against the production Neon database without a backup and review of the generated SQL.
+> Do NOT run `drizzle-kit migrate` against production without explicit environment confirmation, a backup, and review of the generated SQL. Database tests must use the isolated test URL only.
 
 ---
 
@@ -103,7 +111,7 @@ The following invariants cannot be fully enforced at the DB layer alone:
 | :--- | :--- |
 | `certificate_status` state machine (draft→issued→revoked only) | Service layer before DB write |
 | `layout_config` JSONB structure | Zod schema validation in API route handler |
-| Duplicate certificate issuance (same participant + event) | Service layer query before `INSERT` |
+| Duplicate certificate issuance (same participant + event) | Service checks plus unique database index |
 | Age sensibility beyond 0–150 range | Zod schema + form validation |
 | `issued_at` must be set when status transitions to `issued` | Service layer |
 | `revoked_at` + `revoked_reason` required on revocation | Service layer |

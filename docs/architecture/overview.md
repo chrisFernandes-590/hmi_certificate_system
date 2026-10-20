@@ -48,6 +48,7 @@ graph TD
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite@^4.3.3`, `tailwindcss@^4.3.3`) and `tw-animate-css`.
 - **Design System & Components**: Shadcn configuration (`components.json`) using the Nova style preset and `@base-ui/react` primitives.
 - **Entry Point**: `apps/web/index.html` mounting `apps/web/src/main.tsx`.
+- **Certificate UI**: Event admins manage participants, attendance, issuance, certificate search, and revocation. Owners can preview and download PDFs; visitors can verify status at `/verify/:token`.
 
 ### C. Shared Package (`packages/shared`)
 - **Directory**: `packages/shared`.
@@ -59,7 +60,21 @@ graph TD
 
 ### Frontend & Mobile to Backend
 - **Pattern**: Web client and future React Native / Expo client communicate with the backend over HTTP/REST JSON endpoints using predictable success/error contract envelopes.
-- **Current State**: Health and local authentication endpoints are implemented. The web SPA provides registration, verification, login, recovery, session restoration, logout, and a protected account view; certificate workflows remain planned.
+- **Current State**: Health, local authentication, event/participant flows, certificate issuance, public verification, private PDF download, and event-admin revocation are implemented. Cognito remains future work. Neon Object Storage has passed an upload/download/delete smoke test; production AWS S3 still requires deployment configuration.
+
+### Certificate issuance and storage
+
+Event admins issue individual or bulk certificates through the Hono API and
+manage participants and certificate status in the React UI. Owners can search,
+preview, and download their own PDFs; the public verification page queries the
+API for the current status.
+Drizzle writes certificate state, asset metadata, and audit events; the API
+renders print-ready PDFs with verification QR codes and stores them in private
+S3 through the AWS SDK v3 adapter. The API checks certificate ownership before
+streaming a PDF. Public verification reads current status from PostgreSQL.
+Neon Object Storage is supported through the S3-compatible adapter; deployment
+must provide a private bucket and storage credentials. AWS S3 workloads should
+use the application IAM role.
 
 ### Backend to Database
 - **Pattern**: Database access uses Drizzle ORM queries and migrations over PostgreSQL (Neon Serverless in development, Amazon RDS in production).

@@ -31,7 +31,7 @@ export function LoginPage() {
     try {
       await apiRequest('/login', { method: 'POST', body: JSON.stringify(parsed.data) })
       await refresh()
-      navigate('/account')
+      navigate('/admin/dashboard')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign in. Please try again.')
     } finally {

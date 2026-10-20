@@ -76,6 +76,29 @@ hmi-certificate-system/
 └── .gitignore
 ```
 
+> [!IMPORTANT]
+> The tree above is a conceptual layout, not a literal listing. The current
+> implementation uses top-level `src/routes`, `src/services`, and
+> `src/repositories` directories rather than `src/features` or `src/middleware`.
+> Drizzle migrations are in `apps/api/drizzle/`, not `src/db/migrations/`.
+
+### Current implementation locations
+
+| Area | Current paths |
+| :--- | :--- |
+| Web entry and routing | `apps/web/src/main.tsx`, `apps/web/src/App.tsx` |
+| Event UI | `apps/web/src/features/events/events.tsx`, `apps/web/src/features/certificates/EventCertificateManagement.tsx` |
+| Certificate and public verification UI | `apps/web/src/features/certificates/certificates.tsx` |
+| Certify design system foundation | `apps/web/src/features/design-system/`, `apps/web/src/features/design-system/design-system.css` |
+| Shared browser API client | `apps/web/src/lib/api-client.ts` |
+| Hono app and route registration | `apps/api/src/app.ts` |
+| API route handlers | `apps/api/src/routes/` |
+| Business services | `apps/api/src/services/` |
+| Database repositories | `apps/api/src/repositories/` |
+| Drizzle schemas and client | `apps/api/src/db/schema/`, `apps/api/src/db/index.ts` |
+| Tracked migrations | `apps/api/drizzle/` |
+| API tests | `apps/api/test/`; database integration is gated by `TEST_DATABASE_URL` and `TEST_DATABASE_ISOLATED=true` |
+
 ---
 
 ## 3. Detailed Directory Responsibilities

@@ -1,90 +1,71 @@
 # Certificate Workflow & Lifecycle: HMI Certificate System
 
-## 1. Implementation Status Summary
-
-> [!IMPORTANT]
-> **No certificate lifecycle features are currently implemented in the codebase.**
-> There is currently no code for certificate generation, numbering, PDF rendering, QR generation, public verification, or revocation. The descriptions below define the planned lifecycle and requirements for future implementation.
-
----
-
-## 2. Certificate Lifecycle: Planned Workflow
+## Implemented Lifecycle
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor Issuer as Admin / Issuer
-    participant Web as Frontend SPA
-    participant API as Backend API
-    participant DB as PostgreSQL DB
-    actor Public as Public Verifier / Student
+    actor Admin as Event admin
+    participant Web as React web app
+    participant API as Hono API
+    participant DB as PostgreSQL
+    participant Store as Private S3-compatible storage
+    actor Owner as Certificate owner
+    actor Public as Public verifier
 
-    Note over Issuer, DB: Issuance Phase
-    Issuer->>Web: Input Participant & Event details
-    Web->>API: POST /api/certificates
-    API->>API: Generate unique Certificate Number & Hash
-    API->>DB: INSERT certificate (status: 'issued')
-    API->>API: Generate QR Code & Render PDF
-    API-->>Web: Return Certificate details & PDF Link
-
-    Note over Public, DB: Verification Phase
-    Public->>Web: Scan QR / Navigate to /verify/:code
-    Web->>API: GET /api/certificates/verify/:code
-    API->>DB: Query certificate by code / number
-    DB-->>API: Certificate record (status, revocation flag)
-    API-->>Web: Verification result (Valid / Revoked / Not Found)
-
-    Note over Issuer, DB: Revocation Phase
-    Issuer->>Web: Request Revocation (reason, auth)
-    Web->>API: PATCH /api/certificates/:id/revoke
-    API->>DB: UPDATE certificate SET status = 'revoked', revoked_at = NOW()
-    API-->>Web: Confirmation of revocation
+    Admin->>Web: Search participants and set attendance
+    Web->>API: Issue one or many certificates
+    API->>DB: Reserve unique certificate draft
+    API->>API: Render print-ready PDF and QR
+    API->>Store: Upload private PDF
+    API->>DB: Transactionally mark issued, store asset metadata, audit
+    Owner->>API: Download/preview own PDF
+    API->>DB: Verify owner and read storage key/checksum
+    API->>Store: Fetch PDF and verify integrity
+    Public->>Web: Open /verify/:token from QR
+    Web->>API: GET /api/verify/:token
+    API->>DB: Read current issued/revoked status
+    Admin->>API: Revoke certificate with reason
+    API->>DB: Transactionally update status and audit
 ```
 
----
+## Authorization and Data Rules
 
-## 3. Lifecycle Stage Breakdown
+- Event admin authorization is scoped to the associated event and checked by
+  the API for participant management, issuance, listing, and revocation.
+- PDF downloads are authorized through
+  `certificates.participant_id → participants.user_id`; admins do not gain
+  download rights over another user's certificate.
+- One certificate per `(event_id, participant_id)` is enforced by migration
+  `0003_certificate_event_recipient_unique.sql` and its PostgreSQL unique index.
+- PDFs live in private object storage. PostgreSQL stores the object key,
+  MIME type, size, and SHA-256 checksum. The API streams owner-authorized PDF
+  bytes and never returns a storage URL.
+- Public verification reads current database status and returns only the
+  certificate number, title, participant name, event name, issue date, and
+  revocation date. A printed PDF is not authoritative proof.
+- Issuance uses a database draft, PDF upload, then a transaction for issued
+  state, asset metadata, and audit. Failed cleanup is retained as a draft and
+  cleanup asset reference for operator follow-up.
 
-### 1. Creation & Issuance
-- **Current State**: `Not Implemented`.
-- **Planned Flow**: Issuer provides recipient details and event selection via frontend admin form. Backend validates data using Zod, creates a database record, and assigns an issued timestamp.
+## Frontend
 
-### 2. Certificate Number Generation
-- **Current State**: `Not Implemented`.
-- **Planned Flow**: A cryptographically random or sequential prefixed unique identifier (e.g., `HMI-YYYY-XXXXXX` or UUID-based verification token) must be generated on the backend. This number must be enforced by a `UNIQUE` database constraint.
+Event details show admin-only participant/attendance controls, individual and
+bulk issuance, per-recipient results, searchable certificate records, and
+revocation controls. `/certificates` lists and searches the current user's
+certificates and uses the owner-only PDF endpoint for preview/download.
+`/verify/:token` is public and queries the API on each token page load.
 
-### 3. Participant & Event Associations
-- **Current State**: `Not Implemented`.
-- **Planned Flow**: A certificate must reference both a `participant_id` (foreign key) and an `event_id` (foreign key) to maintain strict data integrity.
+## Configuration and Verification
 
-### 4. PDF Generation & Downloads
-- **Current State**: `Not Implemented`.
-- **Dependencies**: No PDF generation library (such as PDFKit, Puppeteer, or `@react-pdf/renderer`) is currently installed in `apps/api` or `apps/web`. A library must be added when this feature is built.
+Set `AWS_REGION`, `CERTIFICATE_S3_BUCKET`, and optional
+`AWS_ENDPOINT_URL_S3`. Neon Object Storage additionally uses
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; custom endpoints use
+path-style addressing. Set `CERTIFICATE_PUBLIC_VERIFY_BASE_URL` to the
+public web route, such as `https://your-domain/verify`, or omit it to derive
+`AUTH_WEB_ORIGIN/verify`. Keep the bucket private.
 
-### 5. QR Code Generation
-- **Current State**: `Not Implemented`.
-- **Dependencies**: No QR code library (such as `qrcode`) is currently installed.
-- **Planned Flow**: The generated QR code should encode a direct public verification URL (e.g., `https://<domain>/verify/<verification_code>`).
-
-### 6. Public Verification
-- **Current State**: `Not Implemented`.
-- **Authoritative Source of Validity**: The **backend database** is the sole authority for certificate validity. Client-side certificates (such as printed PDFs or QR strings) are unverified claims until checked against the database.
-- **Security Guardrail**: The public verification endpoint must return only non-sensitive verification details (recipient name, event title, issue date, status) without exposing internal administrative metadata.
-
-### 7. Revocation & Validity Checks
-- **Current State**: `Not Implemented`.
-- **Planned Flow**: Administrators may revoke a certificate by updating its status to `revoked` and recording the revocation reason and timestamp. The public verification endpoint must report the revoked status immediately.
-
----
-
-## 4. Planned File Responsibilities
-
-| Responsibility | Target File (When Implemented) | Layer |
-| :--- | :--- | :--- |
-| Certificate Routes | `apps/api/src/routes/certificates.ts` | Backend Router |
-| Issuance & Numbering Service | `apps/api/src/services/certificate.ts` | Backend Service |
-| PDF Renderer | `apps/api/src/services/pdf.ts` | Backend Service |
-| QR Code Generator | `apps/api/src/services/qr.ts` | Backend Service |
-| Certificate DB Schema | `apps/api/src/db/schema.ts` | Database Layer |
-| Public Verification Page | `apps/web/src/routes/verify.tsx` | Frontend Page |
-| Certificate Admin Dashboard | `apps/web/src/features/certificates/` | Frontend Feature Module |
+`apps/api/test/certificates.test.ts` covers in-memory HTTP/service behavior.
+`apps/api/test/certificates.database.test.ts` contains a gated PostgreSQL HTTP
+integration suite; it requires a disposable migrated database configured with
+`TEST_DATABASE_URL` and explicit `TEST_DATABASE_ISOLATED=true`. The configured
+development Neon database is not used as a test target.

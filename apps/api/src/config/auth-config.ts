@@ -10,6 +10,10 @@ const environmentSchema = z.object({
   AUTH_VERIFICATION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(86_400),
   AUTH_PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400).default(3_600),
   DEV_EMAIL_ENABLED: z.enum(["true", "false"]).default("false"),
+  AWS_REGION: z.string().trim().min(1).optional(),
+  AWS_ENDPOINT_URL_S3: z.string().url().optional(),
+  CERTIFICATE_S3_BUCKET: z.string().trim().min(3).optional(),
+  CERTIFICATE_PUBLIC_VERIFY_BASE_URL: z.string().url().optional(),
 });
 
 const result = environmentSchema.safeParse(process.env);
@@ -21,6 +25,13 @@ if (result.data.DEV_EMAIL_ENABLED === "true" && result.data.NODE_ENV !== "develo
   throw new Error("DEV_EMAIL_ENABLED can only be enabled when NODE_ENV=development");
 }
 
+if (result.data.CERTIFICATE_S3_BUCKET && !result.data.AWS_REGION) {
+  throw new Error("AWS_REGION is required when CERTIFICATE_S3_BUCKET is configured");
+}
+const publicVerifyBaseUrl = result.data.CERTIFICATE_PUBLIC_VERIFY_BASE_URL ?? `${result.data.AUTH_WEB_ORIGIN.replace(/\/$/, "")}/verify`;
+if (result.data.NODE_ENV === "production" && new URL(publicVerifyBaseUrl).protocol !== "https:") {
+  throw new Error("CERTIFICATE_PUBLIC_VERIFY_BASE_URL must use HTTPS in production");
+}
 if (result.data.NODE_ENV === "production") {
   throw new Error("Production email delivery is not configured; refusing to start authentication without it");
 }
@@ -35,4 +46,11 @@ export const authConfig = {
   passwordResetTtlSeconds: result.data.AUTH_PASSWORD_RESET_TTL_SECONDS,
   devEmailEnabled: result.data.DEV_EMAIL_ENABLED === "true",
   secureCookies: process.env.NODE_ENV === "production",
+};
+
+export const certificateConfig = {
+  awsRegion: result.data.AWS_REGION,
+  s3Endpoint: result.data.AWS_ENDPOINT_URL_S3,
+  bucket: result.data.CERTIFICATE_S3_BUCKET,
+  publicVerifyBaseUrl: publicVerifyBaseUrl.replace(/\/$/, ""),
 };

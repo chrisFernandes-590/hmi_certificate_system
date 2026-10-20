@@ -46,8 +46,8 @@ All event routes require a valid session for an email-verified user. Browser req
 | Method | Path | Purpose | Access |
 | --- | --- | --- | --- |
 | `POST` | `/api/events` | Create an event and its creator's admin membership atomically | Any authenticated verified user |
-| `GET` | `/api/events` or `/api/events/` | List non-archived events where the user has membership | Event member/admin |
-| `GET` | `/api/events/:eventId` | Get event details | Event member/admin |
+| `GET` | `/api/events` or `/api/events/` | Paginated published events plus non-archived events where the user has membership | Authenticated |
+| `GET` | `/api/events/:eventId` | Get published event details, or private event details for a member/admin | Authenticated |
 | `PATCH` | `/api/events/:eventId` | Update name, description, dates, or status | Event admin |
 | `DELETE` | `/api/events/:eventId` | Archive an event | Event admin |
 
@@ -66,6 +66,138 @@ Create example:
 Success data contains `{ "event": { ...event, "accessRole": "admin" } }` (HTTP `201` on create); list data contains `{ "events": [...] }`. Dates must be ISO date-time values and the end must not precede the start. User IDs and roles are derived from the session and database membership, never request bodies. Admin is scoped to one event. DELETE sets `archivedAt`; it preserves the event row and its registration, participant, and certificate history. Archived events are omitted from list and detail access.
 
 Shared JSON contracts live in `packages/shared` (`@hmi/shared`): authentication request schemas/types, event statuses/roles and create/update schemas, event DTOs, public user and auth response types, and success/error envelope types. API route validation and frontend form validation use the shared auth and event schemas. Database records and authorization logic remain in the API.
+
+### Participant routes (`/api`)
+
+Participant endpoints use the existing verified local session (cookie for web,
+`X-Auth-Client: native` plus bearer token for native clients). Cognito is not
+configured in this application yet. List endpoints use `page` (default `1`),
+`pageSize` (default `20`, maximum `100`) and return `total`, `page`, and
+`pageSize`. Search is a trimmed event-name or participant-name substring.
+Only `published` events are discoverable to non-members and eligible for new
+registration; the schema has no separate visibility, registration-window, or
+capacity fields. Registration is allowed before `startDate`. Cancellation is
+allowed before `startDate` for an active registration. The unique
+`event_registrations(event_id, participant_id)` index plus transactional
+conflict handling prevents concurrent duplicates. Cancellation marks the
+registration row instead of deleting it; an eligible participant can register
+again before the event starts, reusing that row.
+
+| Method | Path | Purpose | Access |
+| --- | --- | --- | --- |
+| `GET` | `/api/me/events` | Paginated registrations belonging to the current user | Authenticated |
+| `GET` | `/api/me/events/:eventId/registration` | Current user's registration or `null` | Authenticated |
+| `POST` | `/api/events/:eventId/registration` | Register current user; `409` on duplicate | Authenticated, Origin protected for web |
+| `DELETE` | `/api/events/:eventId/registration` | Cancel an active registration before event start | Authenticated, Origin protected for web |
+| `GET` | `/api/events/:eventId/participants` | List participant registrations and contact details | Admin of that event |
+| `PATCH` | `/api/events/:eventId/participants/:participantId` | Set a registration to `registered`, `attended`, or `absent` | Admin of that event |
+| `GET` | `/api/me/certificates` | Paginated current-user certificates, optional `eventId` and `status` | Authenticated |
+| `GET` | `/api/certificates/:certificateId` | Certificate metadata when owned by current user | Authenticated |
+| `GET` | `/api/certificates/:certificateId/pdf` | Stream the authorized private PDF | Certificate owner |
+| `GET` | `/api/events/:eventId/certificates` | Search and page event certificate records | Admin of that event |
+
+Registration responses include `eventId`, `membershipId` (the
+`event_registrations.id`), `registrationStatus`, `registeredAt`, and
+`updatedAt`. Certificate metadata derives ownership through
+`certificates.participant_id → participants.user_id`; it never accepts a
+client-supplied owner ID. Revoked certificates remain visible with
+`status: "revoked"` and `revokedAt` populated when present. PDF metadata is
+stored in `certificate_assets`; the AWS SDK adapter streams the private file
+only after ownership authorization. S3 must be configured before issuing or
+downloading PDFs. Participant metadata routes need no migration; issuance uses
+the additive uniqueness migration described below.
+
+Example registration success (`201`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "eventId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "membershipId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "registrationStatus": "registered",
+    "registeredAt": "2026-10-20T00:00:00.000Z",
+    "updatedAt": "2026-10-20T00:00:00.000Z"
+  }
+}
+```
+
+`GET /api/me/certificates` returns a `certificates` array with
+`certificateNumber`, `eventId`, `eventName`, `issuedAt`, `status`, and
+certificate metadata, along with pagination fields. It accepts `search` for
+certificate number, title, or event name. Event-admin certificate search
+accepts `search` for certificate number, recipient name, or title, and an
+optional `status` filter. A private certificate requested by a different user
+returns the same `404 Certificate not found` as an unknown certificate.
+
+### Issuance, verification, PDF, and revocation
+
+| Method | Path | Purpose | Access |
+| --- | --- | --- | --- |
+| `POST` | `/api/events/:eventId/certificates` | Issue one certificate to an active event registrant | Event admin |
+| `POST` | `/api/events/:eventId/certificates/bulk` | Issue certificates to up to 100 registrants and report each result | Event admin |
+| `GET` | `/api/events/:eventId/certificates` | Search and list event certificate records | Event admin |
+| `GET` | `/api/verify/:token` | Public current-status verification | Public |
+| `GET` | `/api/certificates/:certificateId/pdf` | Stream PDF bytes from private storage | Certificate owner |
+| `PATCH` | `/api/certificates/:certificateId/revoke` | Revoke and audit a certificate | Admin of its event |
+
+Single-issuance example request:
+
+```json
+{ "participantId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "title": "Certificate of Achievement", "description": "Completed the workshop" }
+```
+
+Issuance accepts participants with `registered` or `attended` status in the
+specified event. A unique index permits one certificate per participant and
+event, including after revocation. Bulk responses return one success or
+failure result per submitted participant ID; each successful certificate is
+fully stored. Failed rows trigger object deletion and draft cleanup; if object
+deletion fails, the draft and cleanup asset reference are retained where the
+database remains available. The service does not claim an all-or-none
+bulk transaction across PostgreSQL and S3.
+
+Public verification returns `result: "valid"`, `"revoked"`, or `"not_found"`
+and only the certificate number, title, recipient name, event name, issue
+date, and revocation date. Draft certificates resolve as not found. The PDF
+contains a QR code to the verification URL. Revocation updates the database
+and audit record in one transaction; repeated requests return success with
+`alreadyRevoked: true`. The web UI serves a public verification page at
+`/verify/:token`. When `CERTIFICATE_PUBLIC_VERIFY_BASE_URL` is omitted, the
+API derives the QR target from `AUTH_WEB_ORIGIN` plus `/verify`.
+
+The API streams PDFs only after checking the current session's ownership via
+the participant relationship. PDF responses default to attachment;
+`?disposition=inline` enables the same owner-authorized preview path. S3 keys and credentials are never returned.
+Configure `AWS_REGION`, `CERTIFICATE_S3_BUCKET`, and optionally
+`AWS_ENDPOINT_URL_S3` in `apps/api/.env`. Neon Object Storage also requires
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; AWS S3 should use the default
+credential chain, preferably an EC2 instance role. The bucket must have
+Block Public Access enabled and must not grant public object access. EC2
+should use an instance role with only `s3:PutObject`, `s3:GetObject`, and
+`s3:DeleteObject` on `arn:aws:s3:::<bucket>/certificate-pdfs/*`; no bucket-list
+permission is needed. The AWS S3 path sends SSE-S3 and uses the SDK default
+credential chain. Custom S3 endpoints use path-style requests and omit the
+AWS-specific SSE-S3 header; keep Neon buckets private and manage bucket access
+in Neon. Never put storage keys in frontend variables. The app does not
+provision buckets or cloud infrastructure.
+
+Example identity policy for the application role (replace the bucket name):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+    "Resource": "arn:aws:s3:::YOUR_PRIVATE_BUCKET/certificate-pdfs/*"
+  }]
+}
+```
+
+S3 charges vary by Region and storage class and can include stored bytes,
+PUT/GET requests, and outbound transfer; estimate AWS deployment costs in the
+[AWS S3 pricing page](https://aws.amazon.com/s3/pricing/). AWS S3 uses S3
+Standard defaults and server-side AES256 encryption.
 
 ## 2. Response Conventions
 
@@ -154,15 +286,9 @@ Add a route in the relevant `apps/api/src/routes/` module and mount it from
    client-safe message/details. Let unexpected errors propagate to `onError`.
 5. Avoid manual response envelopes and redundant `try-catch` blocks.
 
-The following certificate and participant endpoints are planned and are not
-currently implemented:
+Additional future workflows not implemented by this task include certificate
+template selection and standalone participant CRUD:
 
 | Endpoint | Method | Purpose | Auth |
 | :--- | :--- | :--- | :--- |
-| `/api/certificates` | `POST` | Create and issue certificates | Admin/Issuer |
-| `/api/certificates` | `GET` | List or filter certificates | Admin/Issuer |
-| `/api/certificates/:id` | `GET` | Fetch certificate details | Admin/Issuer |
-| `/api/certificates/verify/:code` | `GET` | Verify a certificate | Public |
-| `/api/certificates/:id/pdf` | `GET` | Download certificate PDF | Optional/token-based |
-| `/api/certificates/:id/revoke` | `PATCH` | Revoke a certificate | Admin |
 | `/api/participants` | `GET` / `POST` | Manage participants | Admin |

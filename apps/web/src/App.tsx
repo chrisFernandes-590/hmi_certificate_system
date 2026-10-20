@@ -9,6 +9,9 @@ import { LoginPage } from './features/auth/pages/LoginPage'
 import { SignupPage } from './features/auth/pages/SignupPage'
 import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
+import { NotFoundPage } from './features/errors/pages/NotFoundPage'
+import { MyCertificatesPage, PublicCertificateVerificationPage } from './features/certificates/certificates'
+import { AdminWorkspace } from './features/admin/AdminWorkspace'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -46,24 +49,27 @@ function AccountPage() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not sign out. Please try again.') }
     finally { setBusy(false) }
   }
-  return <AuthLayout title="Your account"><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/events">Manage events</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
+  return <AuthLayout title="Your account"><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/admin/dashboard">Open admin workspace</Link></p><p><Link to="/events">Manage events</Link></p><p><Link to="/certificates">My certificates</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
 }
 
 function AppRoutes() {
   const { user } = useAuth()
   return <Routes>
-    <Route path="/" element={<Navigate to={user ? '/account' : '/login'} replace />} />
+    <Route path="/" element={<Navigate to={user ? '/admin/dashboard' : '/login'} replace />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<SignupPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/verify-email" element={<VerifyPage />} />
+    <Route path="/verify/:token" element={<PublicCertificateVerificationPage />} />
     <Route path="/account" element={<Protected><AccountPage /></Protected>} />
+    <Route path="/admin/*" element={<Protected><AdminWorkspace /></Protected>} />
+    <Route path="/certificates" element={<Protected><MyCertificatesPage /></Protected>} />
     <Route path="/events" element={<Protected><EventListPage /></Protected>} />
     <Route path="/events/new" element={<Protected><EventFormPage mode="create" /></Protected>} />
     <Route path="/events/:eventId" element={<Protected><EventDetailsPage /></Protected>} />
     <Route path="/events/:eventId/edit" element={<Protected><EventFormPage mode="edit" /></Protected>} />
-    <Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="*" element={<NotFoundPage />} />
   </Routes>
 }
 

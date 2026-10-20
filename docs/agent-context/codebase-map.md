@@ -38,6 +38,14 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/repositories/events/` | Drizzle event and membership persistence | Implemented |
 | `apps/api/src/services/events/` | Event access, date validation, create, edit and archive rules | Implemented |
 | `apps/api/src/routes/events.ts` | Authenticated event list/detail/create/edit/archive routes | Implemented |
+| `apps/api/src/routes/participants.ts` | Authenticated registration, admin participant management, and certificate metadata routes | Implemented |
+| `apps/api/src/services/participants/participant-service.ts` | Registration eligibility and participant/certificate ownership rules | Implemented |
+| `apps/api/src/repositories/participants/` | Drizzle persistence for registrations and certificate metadata | Implemented |
+| `apps/api/src/routes/certificates.ts` | Admin issue/bulk/search/revoke, owner PDF download, public verification | Implemented |
+| `apps/api/src/services/certificates/certificate-service.ts` | Issuance saga, authorization, verification, download, revocation | Implemented |
+| `apps/api/src/services/certificates/certificate-pdf.ts` | A4 landscape PDF template and QR generation | Implemented |
+| `apps/api/src/services/certificates/certificate-storage.ts` | Private S3 storage interface and AWS SDK adapter | Implemented |
+| `apps/api/src/repositories/certificates/` | Drizzle certificate persistence and issuance/revocation transactions | Implemented |
 | `apps/api/src/db/schema/event-registrations.ts` | `event_registrations` table + `registration_status` enum | Implemented |
 | `apps/api/src/db/schema/certificate-templates.ts` | `certificate_templates` table + page_size/orientation enums | Implemented |
 | `apps/api/src/db/schema/certificates.ts` | `certificates` table + `certificate_status` enum | Implemented |
@@ -50,9 +58,10 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/middleware/rate-limit.ts` | In-memory sensitive auth endpoint throttling | Implemented |
 | `apps/api/src/repositories/auth/drizzle-auth-repository.ts` | Drizzle persistence for auth records | Implemented |
 | `apps/api/src/services/auth/` | Provider interface, local Argon2id provider, email adapter | Implemented |
-| `apps/api/test/` | Authentication provider and route tests | Implemented |
+| `apps/api/test/` | Auth, event, participant, certificate unit/route tests; isolated PostgreSQL integration suite | Implemented (DB suite gated on explicit test DB config) |
 | `apps/api/drizzle/0001_magical_steve_rogers.sql` | Auth tables and removal of empty legacy credential columns | Implemented |
 | `apps/api/drizzle/0002_nasty_anthem.sql` | Event membership, archive field and owner-admin backfill | Implemented |
+| `apps/api/drizzle/0003_certificate_event_recipient_unique.sql` | One certificate per event participant unique index | Implemented |
 
 ---
 
@@ -71,7 +80,14 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/main.tsx` | Frontend entry point mounting `<App />` via `createRoot` | Implemented |
 | `apps/web/src/App.tsx` | Auth pages, event routes and protected account route | Implemented |
 | `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
+| `apps/web/src/features/errors/` | Independent branded not-found page and illustration for unknown frontend routes | Implemented |
 | `apps/web/src/features/events/events.tsx` | Event list/detail/create/edit views and TanStack Query operations | Implemented |
+| `apps/web/src/features/admin/AdminWorkspace.tsx` | Authenticated multi-screen admin preview workspace with session-persisted demo data | Implemented |
+| `apps/web/src/features/admin/admin-workspace.css` | Responsive styling for admin workspace pages, tables, forms, and dialogs | Implemented |
+| `apps/web/src/features/admin/csv-import.ts` | Chunked CSV participant parsing, validation, and import progress reporting | Implemented |
+| `apps/web/src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant attendance, individual/bulk issue, certificate search and revoke controls | Implemented |
+| `apps/web/src/features/certificates/certificates.tsx` | Owner certificate list/search, preview/download, public verification page | Implemented |
+| `apps/web/src/features/design-system/` | Certify visual tokens, reusable status pill, certificate preview, and layout foundations | Implemented |
 | `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |
 | `apps/web/src/index.css` | Global styles, Tailwind v4 imports, Geist font, theme tokens | Implemented |

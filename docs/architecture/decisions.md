@@ -37,7 +37,7 @@ This document captures architectural and technology decisions established in the
   - `apps/api/drizzle.config.ts`
   - `apps/api/package.json`
   - `apps/api/.env`
-- **Known Trade-offs**: The schema file (`apps/api/src/db/schema.ts`) and migrations directory must be explicitly generated and maintained. Currently uncreated.
+- **Known Trade-offs**: Modular schema and tracked migrations must be explicitly generated and maintained; avoid schema push against databases with existing data.
 
 ---
 

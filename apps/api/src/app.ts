@@ -10,7 +10,11 @@ import { apiErrorHandler, apiNotFoundHandler } from './middleware/error-handler.
 import { createRateLimiter } from './middleware/rate-limit.js'
 import type { AuthProvider, AuthUser } from './services/auth/types.js'
 import { createEventRoutes, listEventsResponse } from './routes/events.js'
+import { createParticipantRoutes } from './routes/participants.js'
 import type { EventService } from './services/events/event-service.js'
+import type { ParticipantService } from './services/participants/participant-service.js'
+import { createCertificateRoutes } from './routes/certificates.js'
+import type { CertificateService } from './services/certificates/certificate-service.js'
 import type { PublicUser } from '@hmi/shared'
 
 export type AuthAppConfig = {
@@ -44,7 +48,7 @@ function clearSessionCookie(c: Context, config: AuthAppConfig) {
   })
 }
 
-export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService) {
+export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService, participantService?: ParticipantService, certificateService?: CertificateService) {
   const app = new Hono<{ Variables: Variables }>()
   app.onError(apiErrorHandler)
   app.notFound(apiNotFoundHandler)
@@ -97,8 +101,14 @@ export function createApp(auth: AuthProvider, config: AuthAppConfig, eventServic
   }))
   app.route('/api/auth', routes)
   if (eventService) {
-    app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin))
-    app.get('/api/events/', authRequired, asyncHandler((c) => listEventsResponse(c, eventService)))
+    app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin, participantService))
+    app.get('/api/events/', authRequired, asyncHandler((c) => listEventsResponse(c, eventService, participantService)))
+  }
+  if (certificateService) {
+    app.route('/api', createCertificateRoutes(auth, certificateService, config.webOrigin))
+  }
+  if (participantService) {
+    app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin))
   }
   return app
 }

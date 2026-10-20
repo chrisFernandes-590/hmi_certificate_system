@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { createEventSchema, updateEventSchema, EVENT_STATUSES, type EventCreateInput, type EventData, type EventListData } from '@hmi/shared'
 import { apiFetch } from '../../lib/api-client'
+import { EventCertificateManagement } from '../certificates/EventCertificateManagement'
 
 type EventInput = EventCreateInput
 const eventKey = ['events']
@@ -34,6 +35,7 @@ export function EventDetailsPage() {
   const item = event.data.event
   const notice = (location.state as { notice?: string } | null)?.notice
   return <EventsLayout title={item.name}>{notice && <p className="notice success" role="status">{notice}</p>}<p>{item.description || 'No description provided.'}</p><dl className="event-details"><dt>Starts</dt><dd>{formatDate(item.startDate)}</dd><dt>Ends</dt><dd>{item.endDate ? formatDate(item.endDate) : 'Not specified'}</dd><dt>Status</dt><dd>{item.status}</dd><dt>Your access</dt><dd>{item.accessRole}</dd></dl>
+    {item.accessRole === 'admin' && <EventCertificateManagement eventId={item.id} />}
     {archive.error && <p className="notice error" role="alert">{friendlyError(archive.error)}</p>}
     <div className="event-actions"><Link className="primary-link" to="/events">All events</Link>{item.accessRole === 'admin' && <><Link className="primary-link" to={`/events/${item.id}/edit`}>Edit</Link><button className="danger-link" disabled={archive.isPending} onClick={() => { if (window.confirm('Archive this event? Its participant and certificate history will be retained.')) archive.mutate() }}>{archive.isPending ? 'Archiving…' : 'Archive event'}</button></>}</div>
   </EventsLayout>
