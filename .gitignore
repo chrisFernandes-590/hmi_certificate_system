@@ -1,1 +1,15 @@
 node_modules
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Dependencies and generated files
+node_modules/
+.expo/
+dist/
+
+# Local Android APKs
+*.apk
