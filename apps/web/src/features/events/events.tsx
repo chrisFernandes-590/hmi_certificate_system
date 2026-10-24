@@ -1,7 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CalendarDays, ChevronRight, CirclePlus, Clock3, MapPin, PencilLine, Users } from 'lucide-react'
+import { DateTimePicker } from '../../components/date-time/DatePickers'
 import { createEventSchema, updateEventSchema, EVENT_STATUSES, type EventCreateInput, type EventData } from '@hmi/shared'
 import { apiFetch } from '../../lib/api-client'
 import { fetchAccessibleEvents } from './event-queries'
@@ -13,6 +14,40 @@ const emptyEvents: EventData['event'][] = []
 const friendlyError = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 const formatDate = (date: string) => new Date(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 const formatRange = (event: Pick<EventData['event'], 'startDate' | 'endDate'>) => event.endDate ? `${new Date(event.startDate).toLocaleDateString()} – ${new Date(event.endDate).toLocaleDateString()}` : new Date(event.startDate).toLocaleDateString()
+const eventDraftLifetime = 7 * 24 * 60 * 60 * 1000
+
+type EventFormDraft = {
+  savedAt: number
+  step: 0 | 1
+  name: string
+  description: string
+  startDate: string
+  endDate: string
+  status: EventInput['status']
+}
+
+function readEventDraft(key: string): EventFormDraft | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const value: unknown = JSON.parse(raw)
+    if (!value || typeof value !== 'object') return null
+    const draft = value as Partial<EventFormDraft>
+    const valid = typeof draft.savedAt === 'number' && Date.now() - draft.savedAt < eventDraftLifetime && (draft.step === 0 || draft.step === 1) && typeof draft.name === 'string' && typeof draft.description === 'string' && typeof draft.startDate === 'string' && typeof draft.endDate === 'string' && typeof draft.status === 'string' && EVENT_STATUSES.includes(draft.status as typeof EVENT_STATUSES[number])
+    if (!valid) {
+      localStorage.removeItem(key)
+      return null
+    }
+    return draft as EventFormDraft
+  } catch {
+    clearEventDraft(key)
+    return null
+  }
+}
+
+function clearEventDraft(key: string) {
+  try { localStorage.removeItem(key) } catch { /* Storage may be unavailable in private browsing. */ }
+}
 
 function useEvents() {
   return useQuery({ queryKey: eventKey, queryFn: fetchAccessibleEvents })
@@ -106,48 +141,90 @@ export function EventDetailsPage({ admin = false }: { admin?: boolean }) {
 export function EventFormPage({ mode, admin = false }: { mode: 'create' | 'edit'; admin?: boolean }) {
   const { eventId = '' } = useParams()
   const edit = mode === 'edit'
+  const draftKey = `hmi:event-create-draft:v1:${admin ? 'admin' : 'events'}`
+  const [restoredDraft] = useState(() => edit ? null : readEventDraft(draftKey))
   const existing = useQuery({ queryKey: [...eventKey, eventId], queryFn: () => apiFetch<EventData>(`/events/${eventId}`), enabled: edit })
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [validation, setValidation] = useState('')
-  const [name, setName] = useState<string | null>(null)
-  const [description, setDescription] = useState<string | null>(null)
-  const [startDate, setStartDate] = useState<string | null>(null)
-  const [endDate, setEndDate] = useState<string | null>(null)
-  const [status, setStatus] = useState<EventInput['status'] | null>(null)
+  const [activeStep, setActiveStep] = useState<0 | 1>(() => restoredDraft?.step ?? 0)
+  const [draftRestored, setDraftRestored] = useState(Boolean(restoredDraft))
+  const [name, setName] = useState<string | null>(() => restoredDraft?.name ?? null)
+  const [description, setDescription] = useState<string | null>(() => restoredDraft?.description ?? null)
+  const [startDate, setStartDate] = useState<string | null>(() => restoredDraft?.startDate ?? null)
+  const [endDate, setEndDate] = useState<string | null>(() => restoredDraft?.endDate ?? null)
+  const [status, setStatus] = useState<EventInput['status'] | null>(() => restoredDraft?.status ?? null)
+  const [draftRevision, setDraftRevision] = useState(0)
   const mutation = useMutation({
     mutationFn: (input: EventInput) => apiFetch<EventData>(edit ? `/events/${eventId}` : '/events', { method: edit ? 'PATCH' : 'POST', body: JSON.stringify(input) }),
-    onSuccess: async ({ event }) => { await queryClient.invalidateQueries({ queryKey: eventKey }); await queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] }); navigate(`${admin ? '/admin/events' : '/events'}/${event.id}`, { state: { notice: edit ? 'Event updated successfully.' : 'Event created successfully.' } }) },
+    onSuccess: async ({ event }) => { if (!edit) clearEventDraft(draftKey); await queryClient.invalidateQueries({ queryKey: eventKey }); await queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] }); navigate(`${admin ? '/admin/events' : '/events'}/${event.id}`, { state: { notice: edit ? 'Event updated successfully.' : 'Event created successfully.' } }) },
   })
-  if (edit && existing.isLoading) return <EventsLayout title="Edit event" admin={admin}><div className="aw-loading" role="status"><span className="aw-loading-dot" /> Loading event…</div></EventsLayout>
-  if (edit && (existing.error || !existing.data || existing.data.event.accessRole !== 'admin')) return <EventsLayout title="Edit event" admin={admin}><p className="notice error" role="alert">{existing.error ? friendlyError(existing.error) : 'Event admin access is required.'}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
   const item = existing.data?.event
   const currentName = name ?? item?.name ?? ''
   const currentDescription = description ?? item?.description ?? ''
   const currentStart = startDate ?? (item ? toLocalInput(item.startDate) : '')
   const currentEnd = endDate ?? (item?.endDate ? toLocalInput(item.endDate) : '')
   const currentStatus = status ?? item?.status ?? 'draft'
+
+  useEffect(() => {
+    if (edit) return
+    if (![currentName, currentDescription, currentStart, currentEnd].some((value) => value.trim()) && currentStatus === 'draft') {
+      clearEventDraft(draftKey)
+      return
+    }
+    const draft: EventFormDraft = { savedAt: Date.now(), step: activeStep, name: currentName, description: currentDescription, startDate: currentStart, endDate: currentEnd, status: currentStatus }
+    try { localStorage.setItem(draftKey, JSON.stringify(draft)) } catch { /* Drafts are best effort when browser storage is unavailable. */ }
+  }, [activeStep, currentDescription, currentEnd, currentName, currentStart, currentStatus, draftKey, draftRevision, edit])
+
+  if (edit && existing.isLoading) return <EventsLayout title="Edit event" admin={admin}><div className="aw-loading" role="status"><span className="aw-loading-dot" /> Loading event…</div></EventsLayout>
+  if (edit && (existing.error || !existing.data || existing.data.event.accessRole !== 'admin')) return <EventsLayout title="Edit event" admin={admin}><p className="notice error" role="alert">{existing.error ? friendlyError(existing.error) : 'Event admin access is required.'}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
+  function continueToSchedule() {
+    setValidation('')
+    if (!currentName.trim()) {
+      setValidation('Event name is required before continuing.')
+      return
+    }
+    setActiveStep(1)
+  }
+  function discardDraft() {
+    clearEventDraft(draftKey)
+    setName('')
+    setDescription('')
+    setStartDate('')
+    setEndDate('')
+    setStatus('draft')
+    setActiveStep(0)
+    setValidation('')
+    setDraftRestored(false)
+    setDraftRevision((revision) => revision + 1)
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setValidation('')
-    const form = new FormData(event.currentTarget)
-    const rawInput: EventInput = { name: String(form.get('name') ?? '').trim(), description: String(form.get('description') ?? '').trim() || null, startDate: localDateTimeToIso(String(form.get('startDate') ?? '')), endDate: form.get('endDate') ? localDateTimeToIso(String(form.get('endDate'))) : null, status: String(form.get('status') ?? 'draft') as EventInput['status'] }
+    if (activeStep === 0) {
+      continueToSchedule()
+      return
+    }
+    const rawInput: EventInput = { name: currentName.trim(), description: currentDescription.trim() || null, startDate: localDateTimeToIso(currentStart), endDate: currentEnd ? localDateTimeToIso(currentEnd) : null, status: currentStatus }
     const parsed = (edit ? updateEventSchema : createEventSchema).safeParse(rawInput)
     if (!parsed.success) { setValidation(parsed.error.issues[0]?.message ?? 'Please check the event details.'); return }
     if (rawInput.endDate && new Date(rawInput.endDate) < new Date(rawInput.startDate)) { setValidation('The end date must be after the start date.'); return }
     mutation.mutate(parsed.data as EventInput)
   }
   return <EventsLayout title={edit ? 'Edit event' : 'Create a new event'} description="Add the event information used to manage registrations and certificates." admin={admin}>
-    <div className="aw-form-intro"><span className="aw-form-step"><span>1</span> Event details</span><span className="aw-form-step-line" /><span className="aw-form-step is-current"><span>2</span> Schedule & settings</span></div>
+    <div className="aw-form-intro" role="group" aria-label="Event form steps"><button type="button" className={`aw-form-step${activeStep === 0 ? ' is-current' : ''}`} aria-current={activeStep === 0 ? 'step' : undefined} onClick={() => { setActiveStep(0); setValidation('') }}><span>1</span> Event details</button><span className="aw-form-step-line" /><button type="button" className={`aw-form-step${activeStep === 1 ? ' is-current' : ''}`} aria-current={activeStep === 1 ? 'step' : undefined} onClick={continueToSchedule}><span>2</span> Schedule & settings</button></div>
+    {draftRestored && !edit && <div className="aw-event-draft-notice" role="status"><span>Your saved draft was restored. Drafts expire after 7 days.</span><button type="button" onClick={discardDraft}>Discard draft</button></div>}
     <div className="aw-wizard-layout aw-event-form-layout">
       <form className="aw-panel aw-event-form" onSubmit={submit}>
-        <div className="aw-panel-head"><div><h2>Basic information</h2><p>These details identify your event across the workspace.</p></div></div>
-        <label className="aw-field">Event name <span className="aw-required">Required</span><input name="name" required maxLength={200} value={currentName} onChange={(event) => setName(event.target.value)} placeholder="e.g. Tech Innovators Hackathon" /><small>{currentName.length}/200 characters</small></label>
-        <label className="aw-field">Description <span className="aw-optional">Optional</span><textarea name="description" rows={4} maxLength={5000} value={currentDescription} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the event and what participants can expect." /><small>{currentDescription.length}/5000 characters</small></label>
-        <h3 className="aw-subhead">Schedule</h3>
-        <div className="aw-form-grid"><label className="aw-field">Start date and time <span className="aw-required">Required</span><input name="startDate" type="datetime-local" required value={currentStart} onChange={(event) => setStartDate(event.target.value)} /></label><label className="aw-field">End date and time <span className="aw-optional">Optional</span><input name="endDate" type="datetime-local" value={currentEnd} onChange={(event) => setEndDate(event.target.value)} /></label></div>
-        <label className="aw-field">Event status<select name="status" value={currentStatus} onChange={(event) => setStatus(event.target.value as EventInput['status'])}>{EVENT_STATUSES.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}</select><small>Choose a status supported by the event workflow.</small></label>
+        <div className="aw-panel-head"><div><h2>{activeStep === 0 ? 'Basic information' : 'Schedule & settings'}</h2><p>{activeStep === 0 ? 'These details identify your event across the workspace.' : 'Choose when the event takes place and its current status.'}</p></div></div>
+        {activeStep === 0 ? <>
+          <label className="aw-field">Event name <span className="aw-required">Required</span><input name="name" required maxLength={200} value={currentName} onChange={(event) => setName(event.target.value)} placeholder="e.g. Tech Innovators Hackathon" /><small>{currentName.length}/200 characters</small></label>
+          <label className="aw-field">Description <span className="aw-optional">Optional</span><textarea name="description" rows={4} maxLength={5000} value={currentDescription} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the event and what participants can expect." /><small>{currentDescription.length}/5000 characters</small></label>
+        </> : <>
+          <div className="aw-form-grid"><div className="aw-field"><label htmlFor="event-start-date">Start date and time <span className="aw-required">Required</span></label><DateTimePicker id="event-start-date" name="startDate" value={currentStart} onChange={(value) => setStartDate(value)} placeholder="Select start date and time" /></div><div className="aw-field"><label htmlFor="event-end-date">End date and time <span className="aw-optional">Optional</span></label><DateTimePicker id="event-end-date" name="endDate" value={currentEnd} onChange={(value) => setEndDate(value)} placeholder="Select end date and time" /></div></div>
+          <label className="aw-field">Event status<select name="status" value={currentStatus} onChange={(event) => setStatus(event.target.value as EventInput['status'])}>{EVENT_STATUSES.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}</select><small>Choose a status supported by the event workflow.</small></label>
+        </>}
         {validation && <p className="notice error" role="alert">{validation}</p>}{mutation.error && <p className="notice error" role="alert">{friendlyError(mutation.error)}</p>}
-        <div className="aw-wizard-footer"><Link className="aw-button" to={edit && item ? `${admin ? '/admin/events' : '/events'}/${item.id}` : admin ? '/admin/events' : '/events'}>Cancel</Link><button className="aw-button aw-button--primary" disabled={mutation.isPending} type="submit">{mutation.isPending ? 'Saving…' : edit ? 'Save changes' : 'Create event'} <ChevronRight size={15} /></button></div>
+        <div className="aw-wizard-footer"><Link className="aw-button" onClick={() => { if (!edit) clearEventDraft(draftKey) }} to={edit && item ? `${admin ? '/admin/events' : '/events'}/${item.id}` : admin ? '/admin/events' : '/events'}>Cancel</Link><div className="aw-wizard-actions">{activeStep === 1 && <button className="aw-button" type="button" onClick={() => { setActiveStep(0); setValidation('') }}>Back</button>}<button className="aw-button aw-button--primary" disabled={mutation.isPending} type="submit">{activeStep === 0 ? 'Continue' : mutation.isPending ? 'Saving…' : edit ? 'Save changes' : 'Create event'} {activeStep === 0 && <ChevronRight size={15} />}</button></div></div>
       </form>
       <aside className="aw-preview-column"><section className="aw-panel aw-event-preview"><div className="aw-preview-icon"><CalendarDays size={24} /></div><span className={`aw-status-badge aw-status-${currentStatus}`}>{currentStatus}</span><h2>{currentName || 'Event name will appear here'}</h2><p>{currentDescription || 'Add a description to introduce this event to participants.'}</p><div className="aw-preview-meta"><span><Clock3 size={14} /> {currentStart ? formatDate(localDateTimeToIso(currentStart)) : 'Start date · End date'}</span><span><MapPin size={14} /> Location is not part of the current event record</span></div><small>Preview reflects fields supported by the current event API.</small></section></aside>
     </div>

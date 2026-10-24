@@ -40,6 +40,18 @@ test('successful login returns the envelope and sets an HttpOnly session cookie 
   assert.equal('accessToken' in body.data, false)
 })
 
+test('registration accepts the shared request shape and returns its generic verification confirmation', async () => {
+  const response = await app.request('/api/auth/register', {
+    ...browserPost,
+    body: JSON.stringify({ name: 'Test User', email: 'test@example.com', password: 'long-enough-password' }),
+  })
+  assert.equal(response.status, 202)
+  assert.deepEqual(await response.json(), {
+    success: true,
+    data: { message: 'If the address can be registered, a verification email has been sent.' },
+  })
+})
+
 test('logout clears the configured development session cookie without a serialization error', async () => {
   const response = await app.request('/api/auth/logout', {
     ...browserPost,

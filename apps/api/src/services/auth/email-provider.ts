@@ -1,8 +1,14 @@
 import type { EmailProvider } from "./types.js";
+import { AppError } from "../../errors/app-error.js";
 
 export class DisabledEmailProvider implements EmailProvider {
-  async sendVerificationEmail(): Promise<void> {}
-  async sendPasswordResetEmail(): Promise<void> {}
+  async sendVerificationEmail(): Promise<void> {
+    throw new AppError(503, "Email delivery is not configured. Please contact support to complete account verification.");
+  }
+
+  async sendPasswordResetEmail(): Promise<void> {
+    throw new AppError(503, "Email delivery is not configured. Please contact support to reset your password.");
+  }
 }
 
 export class DevelopmentConsoleEmailProvider implements EmailProvider {

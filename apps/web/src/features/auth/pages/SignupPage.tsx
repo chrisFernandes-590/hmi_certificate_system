@@ -36,8 +36,8 @@ export function SignupPage() {
     setFieldErrors({})
     setBusy(true)
     try {
-      await apiRequest('/register', { method: 'POST', body: JSON.stringify(parsed.data) })
-      setMessage('Your account was created. Check your email for a verification link before signing in.')
+      const result = await apiRequest<{ message: string }>('/register', { method: 'POST', body: JSON.stringify(parsed.data) })
+      setMessage(result.message)
       form.reset()
       setPassword('')
     } catch (cause) {

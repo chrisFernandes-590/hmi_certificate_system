@@ -35,7 +35,7 @@ Successful authenticated responses expose only `id`, `name`, `email`, and `email
 
 ### Local setup and client portability
 
-Copy `apps/api/.env.example` to `apps/api/.env`, set `DATABASE_URL`, and run the database migration before starting the API. For local verification/reset links set `DEV_EMAIL_ENABLED=true` while `NODE_ENV=development`; the API prints links to its console. The default is disabled. Production startup is blocked until a real `EmailProvider` is configured. Run `pnpm --filter api test` for auth tests.
+Copy `apps/api/.env.example` to `apps/api/.env`, set `DATABASE_URL`, and run the database migration before starting the API. The local example enables `DEV_EMAIL_ENABLED=true` while `NODE_ENV=development`; the API prints verification and reset links to its console. Keep it disabled outside development. When delivery is disabled, auth requests that need email return a safe `503` instead of appearing successful. Production startup is blocked until a real `EmailProvider` is configured. Run `pnpm --filter api test` for auth tests.
 
 For Expo/React Native, send `X-Auth-Client: native` and use the returned bearer token on `/me` and `/logout`. Store it only in Expo SecureStore and clear it after logout. `AuthProvider` keeps provider operations separate from application user UUIDs and authorization. A future Cognito adapter should validate Cognito identities and attach a verified provider subject to the existing `users.id` through controlled linking; do not match/link based on unverified email. Event memberships and certificate ownership continue to reference the application UUID.
 

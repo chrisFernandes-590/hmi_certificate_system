@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LocalAuthProvider } from '../src/services/auth/local-auth-provider.js'
+import { DisabledEmailProvider } from '../src/services/auth/email-provider.js'
 import type { AccountRecord, AuthRepository, AuthUser, CreatedAccount, EmailProvider } from '../src/services/auth/types.js'
 
 type Token = { userId: string; expiresAt: Date; consumedAt?: Date }
@@ -87,6 +88,23 @@ test('registration verifies once, allows verified login, and logout invalidates 
   assert.equal((await provider.getSession(session.sessionToken))?.id, verified.id)
   await provider.endSession(session.sessionToken)
   assert.equal(await provider.getSession(session.sessionToken), undefined)
+})
+
+test('registration fails safely when email delivery is disabled instead of pretending a verification email was sent', async () => {
+  const repository = new MemoryAuthRepository()
+  const provider = new LocalAuthProvider(repository, new DisabledEmailProvider(), {
+    sessionTtlSeconds: 3600,
+    verificationTtlSeconds: 3600,
+    passwordResetTtlSeconds: 3600,
+    appBaseUrl: 'http://localhost:5173',
+  })
+
+  await assert.rejects(
+    provider.register({ name: 'Sample User', email: 'user@example.com', password: 'long-test-password' }),
+    (error: unknown) => error instanceof Error && error.message.includes('Email delivery is not configured'),
+  )
+  assert.equal(repository.accounts.get('user@example.com')?.user.emailVerifiedAt, null)
+  await assert.rejects(provider.authenticate('user@example.com', 'long-test-password'), /incorrect/)
 })
 
 test('duplicate registration does not replace a verified account and wrong passwords fail generically', async () => {

@@ -13,14 +13,15 @@ session cookie. Cognito is not configured.
 | Path | Responsibility |
 | --- | --- |
 | `src/features/auth/` | Login, registration, recovery, email verification |
-| `src/features/events/events.tsx` | Event list/details and create/edit forms |
+| `src/features/events/events.tsx` | Event list/details and two-step create/edit forms; create drafts restore from browser storage for up to seven days |
 | `src/features/admin/AdminWorkspace.tsx` | Authenticated admin shell, persisted dashboard summary, published upcoming events, and event-scoped participant/certificate navigation |
 | `src/features/admin/admin-workspace.css` | Responsive dashboard, event, certificate, and management page styling. Sidebar styling remains in the design-system layout stylesheet. |
 | `src/features/admin/csv-import.ts` | Streaming CSV parser for participant uploads with progress callbacks, validation, and a row cap |
 | `src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant search, attendance updates, individual/bulk certificate issue, event certificate search, status/revocation |
 | `src/features/certificates/certificates.tsx` | Owner certificate listing/search/details, authorized PDF preview/download, public verification page |
-| `src/features/design-system/` | Certify theme tokens, shared status pills, print-style certificate preview, and participant/admin layouts |
+| `src/features/design-system/` | Shared warm-neutral light/dark tokens, status pills, certificate preview, participant layout, and responsive admin navigation |
 | `src/features/navigation/` | Shared safe Back links, accessible breadcrumbs, and route metadata with authorized event-name resolution |
+| `src/components/date-time/` | Canonical themed DatePicker, DateTimePicker, DateRangePicker and development showcase; see `docs/agent-context/date-time-pickers.md` for value semantics and the migration audit |
 | `src/lib/api-client.ts` | Standard JSON envelope client plus authenticated PDF blob downloads |
 | `src/App.css` | Event, participant, certificate table and verification layouts |
 
@@ -51,6 +52,11 @@ picker but reports that spreadsheet parsing support is not configured.
 Certificate PDF downloads remain owner-authorized through `/certificates`;
 event administrators do not receive access to another participant's private
 PDF.
+
+Shared CSS tokens live in `src/index.css` and are consumed by the design-system
+layouts and admin/event/certificate screens. The admin workspace has a persisted
+light/dark toggle (`certify-theme`) and an accessible mobile navigation drawer;
+the backend authorization and route tree remain authoritative.
 
 Authenticated admin, event, account, certificate-list, and certificate-detail
 routes use shared route-derived breadcrumbs and explicit parent-route Back links.

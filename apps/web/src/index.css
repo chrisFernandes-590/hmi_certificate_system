@@ -1,13 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: 'Playfair Display', Georgia, serif;
-    --font-sans: 'Inter', Arial, sans-serif;
+    --font-heading: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     --color-certify-navy: var(--certify-navy);
     --color-certify-page: var(--certify-page);
     --color-certify-surface: var(--certify-surface);
@@ -49,93 +47,113 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+    --radius-sm: 4px;
+    --radius-md: 6px;
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-xl: 8px;
+    --radius-2xl: 10px;
+    --radius-3xl: 12px;
+    --radius-4xl: 16px;
 }
 
 :root {
-    --certify-navy: #111a2e;
-    --certify-page: #f4f6fa;
-    --certify-surface: #ffffff;
-    --certify-border: #e5e8ef;
-    --certify-muted: #5a6480;
-    --certify-cream: #f3ece6;
-    --certify-lavender: #bfc3d9;
-    --certify-success: #1f9d55;
-    --certify-danger: #b4423f;
-    --certify-amber: #ad6a13;
-    --certify-neutral: #747b8e;
-    --background: var(--certify-page);
-    --foreground: var(--certify-navy);
-    --card: var(--certify-surface);
-    --card-foreground: var(--certify-navy);
-    --popover: var(--certify-surface);
-    --popover-foreground: var(--certify-navy);
-    --primary: var(--certify-navy);
-    --primary-foreground: var(--certify-surface);
-    --secondary: var(--certify-cream);
-    --secondary-foreground: var(--certify-navy);
-    --muted: var(--certify-page);
-    --muted-foreground: var(--certify-muted);
-    --accent: var(--certify-lavender);
-    --accent-foreground: var(--certify-navy);
-    --destructive: var(--certify-danger);
-    --border: var(--certify-border);
-    --input: var(--certify-border);
-    --ring: var(--certify-lavender);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.55rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    color-scheme: light;
+    --background: #ffffff;
+    --sidebar-background: #f7f6f3;
+    --surface: #ffffff;
+    --surface-muted: #f7f6f3;
+    --hover: rgba(55, 53, 47, 0.06);
+    --active: rgba(55, 53, 47, 0.1);
+    --foreground: #37352f;
+    --muted-foreground: rgba(55, 53, 47, 0.65);
+    --subtle-foreground: rgba(55, 53, 47, 0.48);
+    --border: rgba(55, 53, 47, 0.12);
+    --input-background: #faf9f6;
+    --accent: #2383e2;
+    --accent-hover: #0877c9;
+    --accent-foreground: #ffffff;
+    --success: #448361;
+    --success-bg: #edf3ec;
+    --warning: #b66b1b;
+    --warning-bg: #faebdd;
+    --danger: #bf4542;
+    --danger-bg: #fdebec;
+    --info: #337ea9;
+    --info-bg: #e7f3f8;
+    --neutral-bg: #f1f1ef;
+    --radius: 6px;
+    --shadow-floating: 0 0 0 1px rgba(15, 15, 15, 0.05), 0 3px 6px rgba(15, 15, 15, 0.08), 0 9px 24px rgba(15, 15, 15, 0.1);
+    --certify-navy: var(--foreground);
+    --certify-page: var(--background);
+    --certify-surface: var(--surface);
+    --certify-border: var(--border);
+    --certify-muted: var(--muted-foreground);
+    --certify-cream: var(--surface-muted);
+    --certify-lavender: #b9c9d6;
+    --certify-success: var(--success);
+    --certify-danger: var(--danger);
+    --certify-amber: var(--warning);
+    --certify-neutral: var(--muted-foreground);
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface);
+    --popover-foreground: var(--foreground);
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-foreground);
+    --secondary: var(--surface-muted);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-muted);
+    --accent-foreground: var(--accent-foreground);
+    --destructive: var(--danger);
+    --input: var(--border);
+    --ring: var(--accent);
+    --chart-1: #6c9f86;
+    --chart-2: #75a6c0;
+    --chart-3: #c49559;
+    --chart-4: #a68ab3;
+    --chart-5: #cb809b;
+    --sidebar: var(--sidebar-background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-foreground);
+    --sidebar-accent: var(--hover);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--accent);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    --background: #191919;
+    --sidebar-background: #202020;
+    --surface: #252525;
+    --surface-muted: #202020;
+    --hover: rgba(255, 255, 255, 0.055);
+    --active: rgba(255, 255, 255, 0.09);
+    --foreground: rgba(255, 255, 255, 0.9);
+    --muted-foreground: rgba(255, 255, 255, 0.62);
+    --subtle-foreground: rgba(255, 255, 255, 0.42);
+    --border: rgba(255, 255, 255, 0.1);
+    --input-background: #252525;
+    --accent: #529cca;
+    --accent-hover: #6aaed8;
+    --accent-foreground: #ffffff;
+    --success: #80b89a;
+    --success-bg: #26352d;
+    --warning: #e0a35f;
+    --warning-bg: #3d3024;
+    --danger: #e18480;
+    --danger-bg: #3c2828;
+    --info: #82b6d2;
+    --info-bg: #26343b;
+    --neutral-bg: #30302e;
+    --shadow-floating: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.3);
+    --certify-lavender: #657884;
+    --chart-1: #80b89a;
+    --chart-2: #82b6d2;
+    --chart-3: #e0a35f;
+    --chart-4: #b59bc3;
+    --chart-5: #df91ad;
 }
 
 @layer base {
@@ -144,9 +162,124 @@
     }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', Arial, sans-serif;
+    min-width: 320px;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
     }
   html {
     @apply font-sans;
     }
 }
+
+/* Shared surfaces and controls used by the dashboard, event, certificate, and auth screens. */
+html body { background: var(--background); color: var(--foreground); }
+html body :is(.admin-layout, .participant-layout) { background: var(--background); color: var(--foreground); }
+html body :is(.admin-sidebar, .participant-topbar, .participant-footer) { background: var(--sidebar-background); border-color: var(--border); }
+html body :is(.admin-page-content, .participant-content) { color: var(--foreground); }
+html body :is(.aw-panel, .aw-stat, .aw-event-card, .aw-template-card, .aw-modal, .aw-drawer, .aw-event-preview, .manager-section, .event-list li, .certificate-list li, .verification-code-form, .issuance-results) {
+    border-color: var(--border);
+    border-radius: 6px;
+    color: var(--foreground);
+    background: var(--surface);
+    box-shadow: none;
+}
+html body :is(.aw-page-heading h1, .aw-page-heading h2, .aw-event-detail-head h1, .aw-stat-copy strong, .aw-stat-copy span, .aw-panel-head h2, .aw-event-card h3, .aw-template-card h3, .manager-section h3, .aw-detail-list dd, .aw-certificate-detail-heading h2) { color: var(--foreground); }
+html body :is(.aw-page-heading p, .aw-stat-copy small, .aw-panel-head p, .aw-muted, .aw-empty p, .aw-detail-list dt, .aw-event-description, .aw-detail-limit-note, .muted-text, .table-subtitle) { color: var(--muted-foreground); }
+html body :is(.aw-button, .aw-icon-button, .aw-table-footer button, .button-secondary, .button-primary, .data-table select, .manager-section input, .manager-section select, .manager-section textarea, .aw-toolbar select, .aw-field input, .aw-field select, .aw-field textarea, .aw-search, .aw-search input) { border-radius: 4px; }
+html body :is(.aw-button, .aw-icon-button, .aw-table-footer button, .button-secondary, .aw-toolbar select, .aw-field input, .aw-field select, .aw-field textarea, .aw-search, .manager-section input, .manager-section select) { border-color: var(--border); color: var(--foreground); background-color: var(--input-background); }
+html body :is(.aw-button--primary, .button-primary, .admin-create-event) { border-color: var(--accent); color: var(--accent-foreground); background: var(--accent); }
+html body :is(.aw-button--primary, .button-primary, .admin-create-event):hover { background: var(--accent-hover); }
+html body :is(.aw-table, .data-table) th { color: var(--muted-foreground); }
+html body :is(.aw-table, .data-table) :is(th, td) { border-color: var(--border); }
+html body :is(.aw-table, .data-table) tbody tr:hover { background: var(--hover); }
+html body :is(.aw-pop-menu, .participant-account-popover) { border-color: var(--border); border-radius: 6px; background: var(--surface); box-shadow: var(--shadow-floating); }
+html body :is(.aw-pop-menu button, .participant-account-popover a, .participant-account-popover button) { color: var(--foreground); background: var(--surface); }
+html body :is(.aw-pop-menu button, .participant-account-popover a, .participant-account-popover button):hover { background: var(--hover); }
+html body :is(.aw-tabs, .aw-stepper, .aw-detail-list > div, .aw-certificate-detail-heading, .aw-certificate-detail-actions, .data-table th, .data-table td, .aw-table th, .aw-table td) { border-color: var(--border); }
+html body :is(.aw-tabs button.active, .aw-stepper button.active) { border-color: var(--accent); color: var(--accent); }
+html body :is(.aw-stepper button span, .aw-stat-icon, .aw-event-icon, .aw-empty-icon, .aw-workflow-icon, .aw-upload > span) { border-color: var(--border); color: var(--muted-foreground); background: var(--surface-muted); }
+html body :is(.aw-status-upcoming, .status-issued, .status-valid) { color: var(--success); background: var(--success-bg); }
+html body :is(.aw-status-live, .aw-status-published) { color: var(--info); background: var(--info-bg); }
+html body :is(.aw-status-draft, .aw-status-completed, .status-draft) { color: var(--muted-foreground); background: var(--neutral-bg); }
+html body :is(.aw-status-cancelled, .status-revoked) { color: var(--danger); background: var(--danger-bg); }
+html body :is(.aw-status-archived, .status-label) { border-color: var(--border); }
+html body :is(.aw-bulk-bar, .aw-upload, .aw-form-intro, .aw-segment, .aw-view-toggle) { border-color: var(--border); color: var(--muted-foreground); background: var(--surface-muted); }
+html body :is(.auth-shell) { background: var(--background); }
+html body :is(.auth-card, .event-card, .verification-card) { border-color: var(--border); border-radius: 8px; color: var(--foreground); background: var(--surface); box-shadow: none; }
+html body :is(.field, .auth-field, .search-field, .certificate-toolbar .field, .aw-field) { color: var(--foreground); }
+html body :is(.field input, .field textarea, .field select, .auth-field input, .search-field input, .search-field select, .certificate-toolbar .field input, .certificate-toolbar .field select) { border-color: var(--border); border-radius: 4px; color: var(--foreground); background: var(--input-background); }
+html body :is(.auth-card a, .aw-detail-list a, .certificate-actions > a, .aw-event-workflows > a:hover strong) { color: var(--accent); }
+html body :is(.notice.error, .aw-inline-error) { color: var(--danger); }
+html body :is(.notice.success, .aw-validation-summary) { color: var(--success); }
+html body :is(.status-label, .aw-status-badge, .aw-access-role) { border-radius: 4px; }
+html body :is(.aw-status-upcoming, .aw-status-published, .aw-status-issued, .status-issued, .verification-status.is-valid) { color: var(--success); background: var(--success-bg); }
+html body :is(.aw-status-ongoing, .aw-status-live, .aw-access-role, .aw-workflow-icon--blue) { color: var(--info); background: var(--info-bg); }
+html body :is(.aw-status-completed, .aw-status-draft, .aw-status-archived, .status-draft) { color: var(--muted-foreground); background: var(--neutral-bg); }
+html body :is(.aw-status-revoked, .status-revoked, .verification-status.is-invalid) { color: var(--danger); background: var(--danger-bg); }
+html body :is(.aw-permission-notice, .aw-warning-callout) { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); color: var(--warning); background: var(--warning-bg); }
+html body :is(.aw-row-error, .row-invalid .aw-inline-input) { color: var(--danger); }
+html body :is(.aw-row-selected, .row-selected, .row-invalid) { background: var(--hover); }
+html body :is(.aw-preview-note, .aw-detail-limit-note, .aw-timeline p, .aw-certificate-detail-heading p:last-child) { color: var(--muted-foreground); }
+html body :is(.aw-page-heading h1, .aw-page-heading h2, .aw-event-title-row h1) { font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 650; letter-spacing: -.035em; line-height: 1.2; }
+html body :is(.aw-dashboard-grid, .aw-detail-grid, .aw-event-form-layout) { gap: 1rem; }
+html body :is(.admin-page-content) { width: min(100%, 1100px); }
+html body :is(.aw-dashboard-grid .aw-panel) { min-height: 14rem; }
+html body :is(.aw-panel, .manager-section) { padding: 1rem; }
+html body :is(.aw-stats, .aw-stats-compact) { gap: .75rem; }
+html body :is(.aw-stat) { min-height: 6.5rem; align-items: center; padding: 1rem; }
+html body :is(.aw-stat-copy strong) { font-family: inherit; font-size: 1.8rem; font-weight: 650; letter-spacing: -.035em; }
+html body :is(.aw-stat-copy span) { font-size: .82rem; font-weight: 550; }
+html body :is(.aw-panel-head h2, .manager-section h3) { font-size: 1rem; font-weight: 620; }
+html body :is(.aw-upcoming-list li) { padding: .75rem 0; border-color: var(--border); }
+html body :is(.aw-quick-actions a) { min-height: 2.25rem; padding: .5rem .7rem; border-color: var(--border); border-radius: 4px; color: var(--foreground); background: var(--surface); }
+html body :is(.aw-quick-actions a:hover) { background: var(--hover); }
+html body :is(.aw-empty h3) { color: var(--foreground); font-family: inherit; font-weight: 600; }
+html body :is(.aw-event-form .aw-panel, .aw-event-preview) { border: 1px solid var(--border); }
+html body :is(.aw-field input, .aw-field select, .aw-field textarea, .aw-toolbar select, .aw-search input) { min-height: 2.25rem; }
+html body :is(.aw-modal, .aw-drawer) { border-radius: 6px; box-shadow: var(--shadow-floating); }
+html body :is(.aw-icon-button:hover, .aw-row-actions button:hover) { background: var(--hover); }
+html body :is(.aw-tabs button.active) { border-bottom-color: var(--accent); color: var(--accent); }
+html body :is(.aw-progress i, .aw-loading-dot) { background: var(--accent); }
+html body :is(.aw-progress) { background: var(--neutral-bg); }
+html body :is(.auth-card button, .button-primary, .manager-section .button-primary, .primary-link) { border-radius: 4px !important; color: var(--accent-foreground) !important; background: var(--accent) !important; }
+html body :is(.auth-card button:hover, .button-primary:hover, .manager-section .button-primary:hover, .primary-link:hover) { background: var(--accent-hover) !important; }
+html body :is(.button-secondary, .manager-section .button-secondary) { border-color: var(--border) !important; color: var(--foreground) !important; background: var(--surface) !important; }
+html body :is(.danger-link, .manager-section .danger-link) { border-radius: 4px !important; color: var(--danger) !important; background: var(--danger-bg) !important; }
+html body :is(.event-list a, .aw-upcoming-list li > a) { color: var(--foreground); }
+html body :is(.event-list span, .event-details dt, .certificate-list li > div:first-child strong, .certificate-list li > div:first-child span) { color: var(--muted-foreground); }
+html body :is(.verification-status) { border-color: var(--border); border-radius: 6px; }
+html body :is(.status-label) { padding: .2rem .45rem; font-size: .75rem; font-weight: 600; }
+html body :is(.pagination button, .aw-table-footer button) { min-height: 2rem; border-radius: 4px; }
+html body :is(.auth-shell, .participant-content) { padding-top: clamp(1.5rem, 4vw, 3rem); }
+html body :is(.table-scroll, .aw-table-scroll) { max-width: 100%; }
+html body :is(.data-table, .aw-table) { font-size: .84rem; }
+html body :is(.data-table th, .aw-table th) { padding: .6rem .65rem; font-size: .75rem; font-weight: 550; letter-spacing: .02em; text-transform: none; }
+html body :is(.data-table td, .aw-table td) { padding: .65rem; }
+html body :is(.certificate-list li) { padding: .8rem; }
+html body :is(.aw-stat-copy small, .aw-panel-head p, .aw-upcoming-list small, .aw-quick-actions a, .aw-empty p, .aw-event-card p, .aw-template-card p, .aw-template-meta, .aw-table-summary, .table-subtitle, .aw-status-badge, .status-label, .aw-inline-error, .aw-field small, .aw-required, .aw-optional, .aw-detail-list dt, .aw-progress-label, .aw-upload-progress, .aw-preview-count, .aw-row-error, .aw-stepper button, .aw-form-step, .aw-meta-separator) { font-size: .75rem; }
+
+@media (max-width: 760px) {
+    html body :is(.admin-page-content) { padding: 1rem; }
+    html body :is(.aw-stats, .aw-stats-compact) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html body :is(.aw-dashboard-grid, .aw-detail-grid, .aw-event-form-layout, .aw-wizard-layout) { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+    html body :is(.aw-page-heading h1, .aw-page-heading h2, .aw-event-title-row h1) { font-size: 1.65rem; }
+    html body :is(.aw-stats, .aw-stats-compact) { gap: .5rem; }
+    html body :is(.aw-stat) { padding: .75rem; }
+    html body :is(.aw-stat-copy strong) { font-size: 1.5rem; }
+}
+
+html.dark body :is(.aw-table, .data-table) tbody tr { color: var(--foreground); }
+html.dark body :is(.aw-stat-icon, .aw-event-icon, .aw-empty-icon, .aw-workflow-icon, .aw-upload > span) { color: var(--muted-foreground); background: var(--surface-muted); }
+html.dark body :is(.aw-thumb, .certificate-paper, .certificate-paper-inner) { color: #37352f; }
+html.dark body :is(.aw-thumb) { background: #f5ece3; border-color: #dfd0c3; }
+html.dark body :is(.aw-modal-backdrop, .aw-drawer-backdrop) { background: rgba(0, 0, 0, .68); }
+
+html { background: var(--background); color: var(--foreground); }
+button, input, select, textarea { color: inherit; font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { color: var(--accent-foreground); background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

@@ -81,7 +81,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/App.tsx` | Auth pages, event routes and protected account route | Implemented |
 | `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
 | `apps/web/src/features/errors/` | Independent branded not-found page and illustration for unknown frontend routes | Implemented |
-| `apps/web/src/features/events/events.tsx` | Event list/detail/create/edit views and TanStack Query operations | Implemented |
+| `apps/web/src/features/events/events.tsx` | Event list/detail views, two-step create/edit forms, temporary browser draft restore, and TanStack Query operations | Implemented |
 | `apps/web/src/features/admin/AdminWorkspace.tsx` | Authenticated admin shell, persisted dashboard statistics, upcoming events, and event-scoped navigation | Implemented |
 | `apps/web/src/features/navigation/` | Shared route-aware Back button and breadcrumb components | Implemented |
 | `apps/web/src/features/admin/admin-workspace.css` | Responsive styling for admin workspace pages, tables, forms, and dialogs | Implemented |
@@ -91,9 +91,10 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/features/design-system/` | Certify visual tokens, reusable status pill, certificate preview, and layout foundations | Implemented |
 | `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |
-| `apps/web/src/index.css` | Global styles, Tailwind v4 imports, Geist font, theme tokens | Implemented |
+| `apps/web/src/index.css` | Tailwind v4 imports, shared light/dark semantic tokens, and cross-screen component foundations | Implemented |
 | `apps/web/src/lib/utils.ts` | Helper function exporting `cn` utility | Implemented |
 | `apps/web/src/components/ui/button.tsx` | Shadcn Button primitive with CVA variants | Implemented |
+| `apps/web/src/components/date-time/` | Shared date, date-time and range picker controls; event scheduling uses DateTimePicker | Implemented |
 | `apps/web/src/routes/` | Target directory for React Router route components | Planned / Not created |
 | `apps/web/src/features/` | Target directory for certificate feature modules | Planned / Not created |
 

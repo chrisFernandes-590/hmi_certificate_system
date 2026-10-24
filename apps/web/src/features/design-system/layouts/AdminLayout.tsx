@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { BadgeCheck, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Users } from 'lucide-react'
+import { BadgeCheck, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Menu, Moon, Sun, Users, X } from 'lucide-react'
 import { useAuth } from '../../../lib/use-auth'
 import { RouteNavigation } from '../../navigation/RouteNavigation'
 
@@ -15,21 +15,45 @@ const adminNavigation = [
 export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard' }: { children: ReactNode; roleLabel?: string; title?: string }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [dark, setDark] = useState(() => {
+    const saved = window.localStorage.getItem('certify-theme')
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+  }, [dark])
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMobileNavOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [mobileNavOpen])
+  function toggleTheme() {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    window.localStorage.setItem('certify-theme', next ? 'dark' : 'light')
+  }
   return <div className="admin-layout">
-    <aside className="admin-sidebar">
-      <div className="admin-brand"><NavLink className="certify-wordmark" to="/admin/dashboard">Certify</NavLink><span className="admin-role-pill">{roleLabel}</span></div>
+    <aside id="admin-navigation" className={`admin-sidebar${mobileNavOpen ? ' is-open' : ''}`}>
+      <div className="admin-brand"><NavLink className="certify-wordmark" to="/admin/dashboard" onClick={() => setMobileNavOpen(false)}>Certify</NavLink><span className="admin-role-pill">{roleLabel}</span><button className="admin-mobile-close" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}><X size={18} /></button></div>
       <nav aria-label="Administration">
-        {adminNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `admin-nav-link${isActive ? ' is-active' : ''}`}><Icon aria-hidden="true" /><span>{label}</span></NavLink>)}
+        {adminNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} onClick={() => setMobileNavOpen(false)} className={({ isActive }) => `admin-nav-link${isActive ? ' is-active' : ''}`}><Icon aria-hidden="true" /><span>{label}</span></NavLink>)}
       </nav>
       <div className="admin-user-block">
         <div className="admin-user-summary"><span className="account-avatar">{user?.name?.slice(0, 1) ?? 'A'}</span><span><strong>{user?.name ?? 'Administrator'}</strong><small>{roleLabel}</small></span><ChevronDown size={16} aria-hidden="true" /></div>
         <button type="button" onClick={async () => { await logout(); navigate('/login') }}>Sign out</button>
       </div>
     </aside>
+    {mobileNavOpen && <button className="admin-nav-backdrop" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <div className="admin-main">
       <header className="admin-topbar">
+        <button className="admin-mobile-menu" type="button" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-controls="admin-navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>{mobileNavOpen ? <X size={18} /> : <Menu size={18} />}</button>
         <h1 className="admin-topbar-title">{title}</h1>
-        <div className="admin-topbar-actions"><button className="admin-create-event" type="button" onClick={() => navigate('/admin/events/new')}>+ Create event</button></div>
+        <div className="admin-topbar-actions"><button className="admin-icon-button admin-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button><button className="admin-create-event" type="button" onClick={() => navigate('/admin/events/new')}>+ Create event</button></div>
       </header>
       <main className="admin-page-content"><RouteNavigation />{children}</main>
     </div>

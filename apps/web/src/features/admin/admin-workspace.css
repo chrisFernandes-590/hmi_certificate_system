@@ -303,11 +303,11 @@
 .aw-workflow-icon--blue { color:#7c3aed; background:#f5f0ff; }
 .aw-archive-button { justify-self:start; margin-top:.7rem; }
 .aw-form-intro { display:flex; align-items:center; gap:.7rem; margin:0 0 .9rem; padding:.8rem 1rem; border:1px solid var(--certify-border); border-radius:.65rem; background:#fff; }
-.aw-form-step { display:flex; align-items:center; gap:.45rem; color:#778197; font-size:.7rem; }
+.aw-form-step { display:flex; align-items:center; gap:.45rem; padding:0; border:0; color:#778197; background:transparent; font:inherit; font-size:.7rem; cursor:pointer; }
 .aw-form-step > span { display:grid; place-items:center; width:1.4rem; height:1.4rem; border:1px solid #d8dde7; border-radius:50%; font-size:.64rem; }
-.aw-form-step.is-current { color:#1d4ed8; font-weight:700; }
-.aw-form-step.is-current > span { border-color:#2563eb; color:#fff; background:#2563eb; }
-.aw-form-step-line { width:2.5rem; height:1px; background:#e4e7ed; }
+.aw-form-step.is-current { color:var(--accent); font-weight:700; }
+.aw-form-step.is-current > span { border-color:var(--accent); color:var(--accent-foreground); background:var(--accent); }
+.aw-form-step-line { width:2.5rem; height:1px; background:var(--border); }
 .aw-event-form-layout { grid-template-columns:minmax(0,1.35fr) minmax(17rem,.8fr); }
 .aw-event-form .aw-panel-head { margin-bottom:1rem; }
 .aw-event-form .aw-panel-head p { margin:.25rem 0 0; color:var(--certify-muted); font-size:.72rem; }
@@ -328,6 +328,10 @@
 .aw-preview-meta svg { flex:0 0 auto; color:#71809b; }
 .aw-event-preview > small { color:#8791a3; font-size:.64rem; line-height:1.45; }
 .aw-event-form .aw-wizard-footer { padding-top:.8rem; border-top:1px solid #edf0f5; }
+.aw-wizard-actions { display:flex; align-items:center; gap:.5rem; }
+.aw-event-draft-notice { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:0 0 .75rem; padding:.6rem .75rem; border:1px solid var(--border); border-radius:.45rem; color:var(--muted-foreground); background:var(--surface-muted); font-size:.72rem; }
+.aw-event-draft-notice button { flex:0 0 auto; padding:0; border:0; color:var(--accent); background:transparent; font:inherit; font-weight:650; cursor:pointer; }
+.aw-event-draft-notice button:hover { text-decoration:underline; }
 .certificate-page .aw-page-heading { align-items:flex-start; margin:.1rem 0 1.15rem; }
 .certificate-page .aw-page-heading h1 { margin:0; font-family:inherit; font-size:1.65rem; font-weight:700; }
 .certificate-page .aw-page-heading p { margin:.35rem 0 0; }

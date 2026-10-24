@@ -13,6 +13,7 @@ import { NotFoundPage } from './features/errors/pages/NotFoundPage'
 import { CertificateDetailsPage, MyCertificatesPage, PublicCertificateVerificationPage } from './features/certificates/certificates'
 import { AdminWorkspace } from './features/admin/AdminWorkspace'
 import { RouteNavigation } from './features/navigation/RouteNavigation'
+import { DatePickerDemo } from './components/date-time/DatePickerDemo'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -56,6 +57,7 @@ function AccountPage() {
 function AppRoutes() {
   const { user } = useAuth()
   return <Routes>
+    {import.meta.env.DEV && <Route path="/__picker-preview" element={<DatePickerDemo />} />}
     <Route path="/" element={<Navigate to={user ? '/admin/dashboard' : '/login'} replace />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<SignupPage />} />
