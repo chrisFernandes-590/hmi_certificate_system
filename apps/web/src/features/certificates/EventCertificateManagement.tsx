@@ -20,7 +20,7 @@ function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize:
   return <nav className="pagination" aria-label="Pages"><button className="button-secondary" type="button" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</button><span>Page {page} of {pages}</span><button className="button-secondary" type="button" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next</button></nav>
 }
 
-export function EventCertificateManagement({ eventId }: { eventId: string }) {
+export function EventCertificateManagement({ eventId, focus }: { eventId: string; focus?: 'participants' | 'certificates' }) {
   const queryClient = useQueryClient()
   const [participantSearch, setParticipantSearch] = useState('')
   const [participantPage, setParticipantPage] = useState(1)
@@ -74,7 +74,10 @@ export function EventCertificateManagement({ eventId }: { eventId: string }) {
     mutationFn: ({ certificateId, reason }: { certificateId: string; reason: string }) => apiFetch(`/certificates/${certificateId}/revoke`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
     onSuccess: async () => {
       setRevokeId(''); setRevokeReason('')
-      await queryClient.invalidateQueries({ queryKey: ['event-certificates', eventId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['event-certificates', eventId] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] }),
+      ])
     },
   })
 
@@ -88,6 +91,7 @@ export function EventCertificateManagement({ eventId }: { eventId: string }) {
       queryClient.invalidateQueries({ queryKey: ['event-certificates', eventId] }),
       queryClient.invalidateQueries({ queryKey: ['event-participants', eventId] }),
       queryClient.invalidateQueries({ queryKey: ['my-certificates'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] }),
     ])
   }
   function issueFor(participantId: string) {
@@ -107,8 +111,8 @@ export function EventCertificateManagement({ eventId }: { eventId: string }) {
     revoke.mutate({ certificateId, reason: parsed.data })
   }
 
-  return <section className="certificate-manager" aria-label="Event participants and certificates">
-    <div className="manager-heading"><div><p className="eyebrow">EVENT ADMINISTRATION</p><h2>Participants and certificates</h2></div></div>
+  return <section className="certificate-manager" data-focus={focus} aria-label={focus === 'participants' ? 'Event participants' : focus === 'certificates' ? 'Event certificates' : 'Event participants and certificates'}>
+    {!focus && <div className="manager-heading"><div><p className="eyebrow">EVENT ADMINISTRATION</p><h2>Participants and certificates</h2></div></div>}
     <section className="manager-section" aria-labelledby="participants-heading">
       <div className="section-heading"><div><h3 id="participants-heading">Participants and attendance</h3><p>Update attendance and issue certificates to registered or attended participants.</p></div>
         <label className="search-field">Search participants<input value={participantSearch} onChange={(event) => { setParticipantSearch(event.target.value); setParticipantPage(1) }} placeholder="Name" /></label>

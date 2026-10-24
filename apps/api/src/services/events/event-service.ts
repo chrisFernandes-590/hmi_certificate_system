@@ -13,6 +13,10 @@ export class EventService {
     return this.repository.listAccessible(userId)
   }
 
+  getAdminDashboardStats(userId: string) {
+    return this.repository.getAdminDashboardStats(userId)
+  }
+
   async getAccessible(userId: string, eventId: string) {
     const event = await this.repository.findAccessible(userId, eventId)
     if (!event) throw new AppError(404, 'Event not found')

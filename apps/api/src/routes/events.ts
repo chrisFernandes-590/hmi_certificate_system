@@ -54,6 +54,10 @@ export function createEventRoutes(auth: AuthProvider, events: EventService, webO
   routes.get('/', requireAuth, listEvents)
   routes.get('', requireAuth, listEvents)
 
+  routes.get('/admin-dashboard', requireAuth, asyncHandler(async (c) => {
+    return successResponse(c, await events.getAdminDashboardStats(c.get('authUser').id))
+  }))
+
   routes.post('/', requireAuth, requireCsrf, asyncHandler(async (c) => {
     const input = await parseBody(c, createEventSchema) as EventCreateInput
     const event = await events.create(c.get('authUser').id, {

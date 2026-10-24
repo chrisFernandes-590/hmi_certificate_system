@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, index, } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, index, uniqueIndex, } from "drizzle-orm/pg-core";
 import { participants } from "./participants.js";
 import { events } from "./events.js";
 import { certificateTemplates } from "./certificate-templates.js";
@@ -64,4 +64,6 @@ export const certificates = pgTable("certificates", {
     index("certificates_event_status_idx").on(table.eventId, table.status),
     // Query: a participant's issuance timeline.
     index("certificates_participant_issued_at_idx").on(table.participantId, table.issuedAt),
+    // One credential is issued per participant for each event, even after revocation.
+    uniqueIndex("certificates_event_participant_uidx").on(table.eventId, table.participantId),
 ]);

@@ -78,6 +78,11 @@
 .verification-status.is-invalid { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
 .verification-status p { margin: .35rem 0 0; color: inherit; }
 .verification-details { margin: 0; }
+.verification-code-form { display: grid; gap: .75rem; margin: .5rem 0 1rem; padding: 1rem; border: 1px solid #e5e8ef; border-radius: .65rem; background: #fbfcfe; }
+.verification-code-form .field { font-size: .82rem; }
+.verification-code-form input { min-height: 2.65rem; }
+.verification-code-form button { width: max-content !important; }
+.verification-code-form small { color: #64748b; font-size: .75rem; line-height: 1.5; }
 .certificate-page .notice { margin: 0; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: .8rem; color: #64748b; font-size: .84rem; }
 @media (max-width: 42rem) {

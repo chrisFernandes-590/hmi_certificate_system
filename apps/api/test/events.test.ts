@@ -37,6 +37,11 @@ class MemoryEventRepository implements EventRepository {
     })
   }
 
+  async getAdminDashboardStats(userId: string) {
+    const eventCount = [...this.records.values()].filter((event) => event.ownerId === userId && !event.archivedAt).length
+    return { eventCount, certificateCount: 0, activeCertificateCount: 0, revokedCertificateCount: 0 }
+  }
+
   async findAccessible(userId: string, eventId: string): Promise<AccessibleEvent | undefined> {
     const event = this.records.get(eventId)
     const role = this.memberships.get(`${eventId}:${userId}`)
@@ -91,6 +96,11 @@ test('event creation atomically grants creator admin, list/detail/edit are scope
   assert.equal(listBody.data.events.length, 1)
   const slashList = await app.request('/api/events/', { headers: { cookie: 'titlecert_session=first' } })
   assert.equal(slashList.status, 200)
+  const summary = await app.request('/api/events/admin-dashboard', { headers: { cookie: 'titlecert_session=first' } })
+  assert.equal(summary.status, 200)
+  assert.deepEqual((await summary.json() as { data: unknown }).data, { eventCount: 1, certificateCount: 0, activeCertificateCount: 0, revokedCertificateCount: 0 })
+  const otherSummary = await app.request('/api/events/admin-dashboard', { headers: { cookie: 'titlecert_session=second' } })
+  assert.deepEqual((await otherSummary.json() as { data: unknown }).data, { eventCount: 0, certificateCount: 0, activeCertificateCount: 0, revokedCertificateCount: 0 })
 
   const hidden = await app.request(`/api/events/${validId}`, { headers: { cookie: 'titlecert_session=second' } })
   assert.equal(hidden.status, 404)

@@ -50,6 +50,7 @@ All event routes require a valid session for an email-verified user. Browser req
 | `GET` | `/api/events/:eventId` | Get published event details, or private event details for a member/admin | Authenticated |
 | `PATCH` | `/api/events/:eventId` | Update name, description, dates, or status | Event admin |
 | `DELETE` | `/api/events/:eventId` | Archive an event | Event admin |
+| `GET` | `/api/events/admin-dashboard` | Counts for active events and certificates in events where the current user is an admin | Authenticated; scoped to current user's non-archived admin memberships |
 
 Create example:
 
@@ -64,8 +65,17 @@ Create example:
 ```
 
 Success data contains `{ "event": { ...event, "accessRole": "admin" } }` (HTTP `201` on create); list data contains `{ "events": [...] }`. Dates must be ISO date-time values and the end must not precede the start. User IDs and roles are derived from the session and database membership, never request bodies. Admin is scoped to one event. DELETE sets `archivedAt`; it preserves the event row and its registration, participant, and certificate history. Archived events are omitted from list and detail access.
+The event list does not include participant or certificate counts; the frontend does not estimate these values.
 
 Shared JSON contracts live in `packages/shared` (`@hmi/shared`): authentication request schemas/types, event statuses/roles and create/update schemas, event DTOs, public user and auth response types, and success/error envelope types. API route validation and frontend form validation use the shared auth and event schemas. Database records and authorization logic remain in the API.
+
+The admin dashboard summary returns `eventCount`, `certificateCount`,
+`activeCertificateCount` (issued certificates), and `revokedCertificateCount`.
+Counts are computed from persisted rows and exclude archived events. Draft
+certificates are included only in the total certificate count.
+The endpoint does not currently return participant totals or recent activity.
+The frontend leaves those values unavailable instead of deriving a potentially
+incomplete aggregate from the current event page.
 
 ### Participant routes (`/api`)
 

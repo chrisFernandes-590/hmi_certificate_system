@@ -47,7 +47,7 @@ export function ResetPasswordPage() {
   }
 
   return <AuthLayout>
-    <AuthBackLink />
+    <AuthBackLink to="/forgot-password" />
     <AuthFormHeader
       title={completed ? 'Password updated' : 'Reset your password'}
       subtitle={completed ? 'Your password has been changed. You can now sign in with your new password.' : 'Enter your new password below to complete the process.'}

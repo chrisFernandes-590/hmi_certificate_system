@@ -1,16 +1,15 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, Bell, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Search, Settings, Users, WandSparkles } from 'lucide-react'
+import { BadgeCheck, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Users } from 'lucide-react'
 import { useAuth } from '../../../lib/use-auth'
+import { RouteNavigation } from '../../navigation/RouteNavigation'
 
 const adminNavigation = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/events', label: 'Events', icon: CalendarDays },
   { to: '/admin/participants', label: 'Participants', icon: Users },
   { to: '/admin/certificates', label: 'Certificates', icon: FileBadge },
-  { to: '/admin/templates', label: 'Templates', icon: WandSparkles },
-  { to: '/admin/activity', label: 'Activity log', icon: Activity },
-  { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/admin/my-certificates', label: 'My certificates', icon: BadgeCheck },
 ]
 
 export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard' }: { children: ReactNode; roleLabel?: string; title?: string }) {
@@ -30,10 +29,9 @@ export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard'
     <div className="admin-main">
       <header className="admin-topbar">
         <h1 className="admin-topbar-title">{title}</h1>
-        <label className="admin-global-search"><Search aria-hidden="true" /><span className="visually-hidden">Search events, participants, certificates</span><input placeholder="Search events, participants, certificates" /></label>
-        <div className="admin-topbar-actions"><button className="admin-create-event" type="button" onClick={() => navigate('/admin/events/new')}>+ Create event</button><button className="admin-icon-button" type="button" aria-label="Notifications"><Bell aria-hidden="true" /></button></div>
+        <div className="admin-topbar-actions"><button className="admin-create-event" type="button" onClick={() => navigate('/admin/events/new')}>+ Create event</button></div>
       </header>
-      <main className="admin-page-content">{children}</main>
+      <main className="admin-page-content"><RouteNavigation />{children}</main>
     </div>
   </div>
 }

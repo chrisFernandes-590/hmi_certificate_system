@@ -10,8 +10,9 @@ import { SignupPage } from './features/auth/pages/SignupPage'
 import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
 import { NotFoundPage } from './features/errors/pages/NotFoundPage'
-import { MyCertificatesPage, PublicCertificateVerificationPage } from './features/certificates/certificates'
+import { CertificateDetailsPage, MyCertificatesPage, PublicCertificateVerificationPage } from './features/certificates/certificates'
 import { AdminWorkspace } from './features/admin/AdminWorkspace'
+import { RouteNavigation } from './features/navigation/RouteNavigation'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -19,8 +20,8 @@ function Protected({ children }: { children: ReactNode }) {
   return user ? children : <Navigate to="/login" replace />
 }
 
-function AuthLayout({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
-  return <main className="auth-shell"><section className="auth-card"><p className="eyebrow">HMI CERTIFICATES</p><h1>{title}</h1>{children}{footer && <div className="auth-footer">{footer}</div>}</section></main>
+function AuthLayout({ title, children, footer, navigation = false }: { title: string; children: ReactNode; footer?: ReactNode; navigation?: boolean }) {
+  return <main className="auth-shell"><section className="auth-card"><p className="eyebrow">HMI CERTIFICATES</p>{navigation && <RouteNavigation />}<h1>{title}</h1>{children}{footer && <div className="auth-footer">{footer}</div>}</section></main>
 }
 
 function VerifyPage() {
@@ -49,7 +50,7 @@ function AccountPage() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not sign out. Please try again.') }
     finally { setBusy(false) }
   }
-  return <AuthLayout title="Your account"><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/admin/dashboard">Open admin workspace</Link></p><p><Link to="/events">Manage events</Link></p><p><Link to="/certificates">My certificates</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
+  return <AuthLayout title="Your account" navigation><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/admin/dashboard">Open admin workspace</Link></p><p><Link to="/events">Manage events</Link></p><p><Link to="/certificates">My certificates</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
 }
 
 function AppRoutes() {
@@ -61,10 +62,12 @@ function AppRoutes() {
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/verify-email" element={<VerifyPage />} />
+    <Route path="/verify" element={<PublicCertificateVerificationPage />} />
     <Route path="/verify/:token" element={<PublicCertificateVerificationPage />} />
     <Route path="/account" element={<Protected><AccountPage /></Protected>} />
     <Route path="/admin/*" element={<Protected><AdminWorkspace /></Protected>} />
     <Route path="/certificates" element={<Protected><MyCertificatesPage /></Protected>} />
+    <Route path="/certificates/:certificateId" element={<Protected><CertificateDetailsPage /></Protected>} />
     <Route path="/events" element={<Protected><EventListPage /></Protected>} />
     <Route path="/events/new" element={<Protected><EventFormPage mode="create" /></Protected>} />
     <Route path="/events/:eventId" element={<Protected><EventDetailsPage /></Protected>} />

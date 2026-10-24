@@ -82,11 +82,12 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
 | `apps/web/src/features/errors/` | Independent branded not-found page and illustration for unknown frontend routes | Implemented |
 | `apps/web/src/features/events/events.tsx` | Event list/detail/create/edit views and TanStack Query operations | Implemented |
-| `apps/web/src/features/admin/AdminWorkspace.tsx` | Authenticated multi-screen admin preview workspace with session-persisted demo data | Implemented |
+| `apps/web/src/features/admin/AdminWorkspace.tsx` | Authenticated admin shell, persisted dashboard statistics, upcoming events, and event-scoped navigation | Implemented |
+| `apps/web/src/features/navigation/` | Shared route-aware Back button and breadcrumb components | Implemented |
 | `apps/web/src/features/admin/admin-workspace.css` | Responsive styling for admin workspace pages, tables, forms, and dialogs | Implemented |
 | `apps/web/src/features/admin/csv-import.ts` | Chunked CSV participant parsing, validation, and import progress reporting | Implemented |
 | `apps/web/src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant attendance, individual/bulk issue, certificate search and revoke controls | Implemented |
-| `apps/web/src/features/certificates/certificates.tsx` | Owner certificate list/search, preview/download, public verification page | Implemented |
+| `apps/web/src/features/certificates/certificates.tsx` | Owner certificate list/search/details, authorized preview/download, public verification page | Implemented |
 | `apps/web/src/features/design-system/` | Certify visual tokens, reusable status pill, certificate preview, and layout foundations | Implemented |
 | `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |

@@ -7,6 +7,7 @@ import { AuthField } from '../components/AuthField'
 import { AuthFooter } from '../components/AuthFooter'
 import { AuthFormHeader } from '../components/AuthFormHeader'
 import { AuthLayout } from '../components/AuthLayout'
+import { AuthBackLink } from '../components/AuthBackLink'
 import { AuthSubmitButton } from '../components/AuthSubmitButton'
 import { PasswordGuidance } from '../components/PasswordGuidance'
 
@@ -47,6 +48,7 @@ export function SignupPage() {
   }
 
   return <AuthLayout>
+    <AuthBackLink />
     <AuthFormHeader title="Create your account" subtitle="Get started managing certificates for your events." />
     <form className="certify-auth-form" onSubmit={submit} noValidate>
       <AuthField id="signup-name" label="Full name" name="name" autoComplete="name" required error={fieldErrors.name} />

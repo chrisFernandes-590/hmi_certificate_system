@@ -1,6 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { BackButton } from '../../navigation/BackButton'
 
-export function AuthBackLink() {
-  return <Link className="auth-back-link" to="/login" viewTransition><ArrowLeft aria-hidden="true" />Back to sign in</Link>
+export function AuthBackLink({ to = '/login' }: { to?: string }) {
+  return <BackButton to={to} />
 }

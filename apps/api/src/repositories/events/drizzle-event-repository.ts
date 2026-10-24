@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, isNull } from 'drizzle-orm'
 import type { Database } from '../../db/index.js'
-import { eventMemberships, events } from '../../db/schema.js'
+import { certificates, eventMemberships, events } from '../../db/schema.js'
 import type { EventRepository, EventUpdateInput, NewEventInput } from './event-repository.js'
 
 const eventColumns = {
@@ -34,6 +34,32 @@ export class DrizzleEventRepository implements EventRepository {
       .innerJoin(events, eq(eventMemberships.eventId, events.id))
       .where(and(eq(eventMemberships.userId, userId), isNull(events.archivedAt)))
       .orderBy(asc(events.startDate), asc(events.createdAt))
+  }
+
+  async getAdminDashboardStats(userId: string) {
+    const [eventResult] = await this.db
+      .select({ value: count() })
+      .from(eventMemberships)
+      .innerJoin(events, eq(eventMemberships.eventId, events.id))
+      .where(and(eq(eventMemberships.userId, userId), eq(eventMemberships.role, 'admin'), isNull(events.archivedAt)))
+
+    const rows = await this.db
+      .select({ status: certificates.status, value: count() })
+      .from(certificates)
+      .innerJoin(eventMemberships, eq(certificates.eventId, eventMemberships.eventId))
+      .innerJoin(events, eq(certificates.eventId, events.id))
+      .where(and(eq(eventMemberships.userId, userId), eq(eventMemberships.role, 'admin'), isNull(events.archivedAt)))
+      .groupBy(certificates.status)
+
+    const counts = new Map(rows.map((row) => [row.status, row.value]))
+    const activeCertificateCount = counts.get('issued') ?? 0
+    const revokedCertificateCount = counts.get('revoked') ?? 0
+    return {
+      eventCount: eventResult?.value ?? 0,
+      certificateCount: rows.reduce((total, row) => total + row.value, 0),
+      activeCertificateCount,
+      revokedCertificateCount,
+    }
   }
 
   async findAccessible(userId: string, eventId: string) {
