@@ -259,7 +259,6 @@
 .aw-quick-actions a { display:inline-flex; align-items:center; gap:.42rem; padding:.55rem .7rem; border:1px solid var(--certify-border); border-radius:.45rem; color:#34415d; background:#fff; font-size:.72rem; font-weight:600; text-decoration:none; }
 .aw-quick-actions a:hover { border-color:#b9c7de; background:#fafcff; }
 .aw-loading { display:flex; align-items:center; gap:.55rem; padding:1rem .2rem; color:var(--certify-muted); font-size:.8rem; }
-.aw-loading-dot { width:.55rem; height:.55rem; border-radius:50%; background:#3b82f6; box-shadow:0 0 0 .25rem #3b82f61a; }
 .aw-empty--compact { min-height:10rem; }
 .aw-empty--compact > svg { color:#93a1b8; }
 .aw-empty--compact p { margin:0; }
@@ -328,6 +327,8 @@
 .aw-preview-meta svg { flex:0 0 auto; color:#71809b; }
 .aw-event-preview > small { color:#8791a3; font-size:.64rem; line-height:1.45; }
 .aw-event-form .aw-wizard-footer { padding-top:.8rem; border-top:1px solid #edf0f5; }
+.section-heading > div > .button-secondary { display:inline-flex; align-items:center; gap:.35rem; min-height:2.2rem; margin-top:.45rem; padding:.45rem .65rem; }
+.duplicate-participant-link { margin-left:.45rem; padding:0; border:0; color:var(--accent); background:transparent; font:inherit; font-weight:600; text-decoration:underline; cursor:pointer; }
 .aw-wizard-actions { display:flex; align-items:center; gap:.5rem; }
 .aw-event-draft-notice { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:0 0 .75rem; padding:.6rem .75rem; border:1px solid var(--border); border-radius:.45rem; color:var(--muted-foreground); background:var(--surface-muted); font-size:.72rem; }
 .aw-event-draft-notice button { flex:0 0 auto; padding:0; border:0; color:var(--accent); background:transparent; font:inherit; font-weight:650; cursor:pointer; }

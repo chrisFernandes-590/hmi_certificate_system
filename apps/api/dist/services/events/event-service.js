@@ -13,6 +13,9 @@ export class EventService {
     listAccessible(userId) {
         return this.repository.listAccessible(userId);
     }
+    getAdminDashboardStats(userId) {
+        return this.repository.getAdminDashboardStats(userId);
+    }
     async getAccessible(userId, eventId) {
         const event = await this.repository.findAccessible(userId, eventId);
         if (!event)

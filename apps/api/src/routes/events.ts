@@ -38,7 +38,7 @@ export async function listEventsResponse(c: Context<{ Variables: Variables }>, e
     const query = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20), search: z.string().trim().min(1).max(100).optional() }).safeParse(c.req.query())
     if (!query.success) throw new AppError(400, 'Invalid query parameters', query.error.issues.map(({ path, message }) => ({ field: path.join('.'), message })))
     const result = await participants.listDiscoverableEvents(c.get('authUser').id, query.data)
-    return successResponse(c, { ...result, events: result.events.map(({ accessRole, ...event }) => ({ ...toEventDto(event as Event), accessRole, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize })
+    return successResponse(c, { ...result, events: result.events.map(({ accessRole, participantCount, ...event }) => ({ ...toEventDto(event as Event), accessRole, participantCount: accessRole === 'admin' ? participantCount : null, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize })
   }
   const accessibleEvents = await events.listAccessible(c.get('authUser').id)
   return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) })

@@ -33,6 +33,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/db/schema/users.ts` | `users` table definition + type exports | Implemented |
 | `apps/api/src/db/schema/auth.ts` | Credentials, sessions, one-time tokens, external identity tables | Implemented |
 | `apps/api/src/db/schema/participants.ts` | `participants` table definition + type exports | Implemented |
+| `apps/api/src/db/schema/participant-import-jobs.ts` | Persistent CSV upload, validation, confirmation, and resume state | Implemented |
 | `apps/api/src/db/schema/events.ts` | `events` table + `event_status` enum | Implemented |
 | `apps/api/src/db/schema/event-memberships.ts` | Per-event member/admin role and unique user/event membership | Implemented |
 | `apps/api/src/repositories/events/` | Drizzle event and membership persistence | Implemented |
@@ -41,6 +42,9 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/routes/participants.ts` | Authenticated registration, admin participant management, and certificate metadata routes | Implemented |
 | `apps/api/src/services/participants/participant-service.ts` | Registration eligibility and participant/certificate ownership rules | Implemented |
 | `apps/api/src/repositories/participants/` | Drizzle persistence for registrations and certificate metadata | Implemented |
+| `apps/api/src/routes/participant-imports.ts` | Presigned upload lifecycle, job history, explicit import confirmation, and manual attendee creation | Implemented |
+| `apps/api/src/services/participants/participant-import-service.ts` | Streaming validation/import worker, recovery, reports, and object retention | Implemented |
+| `apps/api/src/services/participants/participant-import-storage.ts` | Private S3-compatible CSV upload/download/delete adapter | Implemented |
 | `apps/api/src/routes/certificates.ts` | Admin issue/bulk/search/revoke, owner PDF download, public verification | Implemented |
 | `apps/api/src/services/certificates/certificate-service.ts` | Issuance saga, authorization, verification, download, revocation | Implemented |
 | `apps/api/src/services/certificates/certificate-pdf.ts` | A4 landscape PDF template and QR generation | Implemented |
@@ -62,6 +66,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/drizzle/0001_magical_steve_rogers.sql` | Auth tables and removal of empty legacy credential columns | Implemented |
 | `apps/api/drizzle/0002_nasty_anthem.sql` | Event membership, archive field and owner-admin backfill | Implemented |
 | `apps/api/drizzle/0003_certificate_event_recipient_unique.sql` | One certificate per event participant unique index | Implemented |
+| `apps/api/drizzle/0004_participant_import_workflow.sql` | Guest participant profiles and durable CSV import jobs | Implemented |
 
 ---
 
@@ -79,6 +84,7 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/index.html` | HTML container mounting React `#root` | Implemented |
 | `apps/web/src/main.tsx` | Frontend entry point mounting `<App />` via `createRoot` | Implemented |
 | `apps/web/src/App.tsx` | Auth pages, event routes and protected account route | Implemented |
+| `apps/web/src/components/loading/LoadingUi.tsx` | Route/data skeleton patterns, accessible Notion-style spinner, and lazy chunk error recovery | Implemented |
 | `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
 | `apps/web/src/features/errors/` | Independent branded not-found page and illustration for unknown frontend routes | Implemented |
 | `apps/web/src/features/events/events.tsx` | Event list/detail views, two-step create/edit forms, temporary browser draft restore, and TanStack Query operations | Implemented |
@@ -86,6 +92,8 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/features/navigation/` | Shared route-aware Back button and breadcrumb components | Implemented |
 | `apps/web/src/features/admin/admin-workspace.css` | Responsive styling for admin workspace pages, tables, forms, and dialogs | Implemented |
 | `apps/web/src/features/admin/csv-import.ts` | Chunked CSV participant parsing, validation, and import progress reporting | Implemented |
+| `apps/web/src/features/admin/csv-import.worker.ts` | Worker-based local CSV inspection and mapping preview | Implemented |
+| `apps/web/src/features/certificates/ParticipantImportWizard.tsx` | Direct S3 upload, server validation review, explicit confirmation, recovery, history, and error report | Implemented |
 | `apps/web/src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant attendance, individual/bulk issue, certificate search and revoke controls | Implemented |
 | `apps/web/src/features/certificates/certificates.tsx` | Owner certificate list/search/details, authorized preview/download, public verification page | Implemented |
 | `apps/web/src/features/design-system/` | Certify visual tokens, reusable status pill, certificate preview, and layout foundations | Implemented |

@@ -6,7 +6,7 @@ export type EventRecord = {
 }
 
 export interface ParticipantRepository {
-  listDiscoverableEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { accessRole: 'admin' | 'member' | null }>; total: number }>
+  listDiscoverableEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { accessRole: 'admin' | 'member' | null; participantCount: number | null }>; total: number }>
   findEvent(eventId: string): Promise<EventRecord | undefined>
   listUserEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { registrationId: string; registrationStatus: string; registeredAt: Date }>; total: number }>
   findRegistration(userId: string, eventId: string): Promise<{ id: string; eventId: string; status: string; registeredAt: Date; updatedAt: Date } | undefined>
@@ -14,7 +14,7 @@ export interface ParticipantRepository {
   cancelRegistration(userId: string, eventId: string, now: Date): Promise<{ id: string; eventId: string; status: string; registeredAt: Date; updatedAt: Date } | undefined>
   isEventMember(userId: string, eventId: string): Promise<boolean>
   isEventAdmin(userId: string, eventId: string): Promise<boolean>
-  listEventParticipants(eventId: string, input: PageInput): Promise<{ participants: Array<{ participantId: string; userId: string; name: string; email: string; registrationId: string; status: string; registeredAt: Date }>; total: number }>
+  listEventParticipants(eventId: string, input: PageInput): Promise<{ participants: Array<{ participantId: string; userId: string | null; name: string; email: string; phone: string | null; organization: string | null; registrationId: string; status: string; registeredAt: Date }>; total: number }>
   updateRegistrationStatus(eventId: string, participantId: string, status: 'registered' | 'attended' | 'absent', now: Date): Promise<{ id: string; eventId: string; participantId: string; status: string; registeredAt: Date; updatedAt: Date } | undefined>
   listUserCertificates(userId: string, input: PageInput): Promise<{ certificates: CertificateRecord[]; total: number }>
   findOwnedCertificate(userId: string, certificateId: string): Promise<CertificateRecord | undefined>

@@ -20,9 +20,10 @@ export function RouteNavigation() {
   })
   const eventLabel = event.data?.event.name ?? 'Event'
   const navigation = routeNavigation(path, eventLabel)
+  const showBack = path !== '/admin/participants' && navigation.backTo
 
-  return <div className="route-navigation">
-    {navigation.backTo && <BackButton to={navigation.backTo} />}
+  return <div className={`route-navigation${path === '/admin/participants' ? ' ep-route-navigation' : ''}`}>
+    {showBack && <BackButton to={navigation.backTo!} />}
     <Breadcrumbs items={navigation.items} />
   </div>
 }

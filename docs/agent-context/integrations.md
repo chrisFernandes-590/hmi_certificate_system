@@ -49,6 +49,32 @@ private. For AWS S3, keep Block Public Access enabled. Limit the IAM resource to
 application. S3 can incur storage, request, and data-transfer charges; see the
 [official S3 pricing](https://aws.amazon.com/s3/pricing/).
 
+### Participant CSV uploads
+
+The participant importer can use a dedicated private `PARTICIPANT_IMPORT_S3_BUCKET`;
+when omitted, it uses `CERTIFICATE_S3_BUCKET` under `participant-imports/`.
+Configure `AWS_REGION` and, for S3-compatible development storage,
+`AWS_ENDPOINT_URL_S3`. AWS S3 uses a ten-minute signed PUT that binds the
+server-generated object key, content type, SHA-256 checksum, upload ID metadata,
+and SSE-S3 header. The upload URL is a bearer capability: keep its lifetime
+short, do not log it, and do not reuse object keys. The API checks object size,
+content type, checksum, and upload ID before it starts validation.
+
+For browser uploads to AWS S3, set bucket CORS to the exact deployed
+`AUTH_WEB_ORIGIN`, allow the `PUT` method, and allow the request headers
+`content-type`, `x-amz-checksum-sha256`, `x-amz-meta-upload-id`, and
+`x-amz-server-side-encryption`. Do not use wildcard origins for authenticated
+production uploads. The application IAM role needs `s3:PutObject`,
+`s3:GetObject`, and `s3:DeleteObject` scoped to
+`arn:aws:s3:::<bucket>/participant-imports/*`; no public-read permission is
+needed. AWS storage objects are deleted by the API worker seven days after a
+job becomes terminal or abandoned. Give the API worker network access to S3 and
+keep bucket Block Public Access and default encryption enabled.
+
+For Neon or another S3-compatible endpoint, do not set the AWS SSE-S3 header;
+the adapter omits it when `AWS_ENDPOINT_URL_S3` is configured. Use the storage
+provider's private-bucket controls and its documented browser CORS settings.
+
 ### Runtime configuration and email readiness
 
 - `DATABASE_URL`: current application PostgreSQL URL. Do not use it for
@@ -56,6 +82,8 @@ application. S3 can incur storage, request, and data-transfer charges; see the
 - `AWS_REGION`, `AWS_ENDPOINT_URL_S3`, and `CERTIFICATE_S3_BUCKET`: storage
   region, optional custom S3-compatible endpoint, and existing private bucket.
   Neon also requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+- `PARTICIPANT_IMPORT_S3_BUCKET`: optional dedicated private participant CSV
+  bucket; defaults to `CERTIFICATE_S3_BUCKET` when omitted.
 - `CERTIFICATE_PUBLIC_VERIFY_BASE_URL`: public browser page prefix, such as
   `https://your-domain/verify`. If omitted, defaults to
   `${AUTH_WEB_ORIGIN}/verify`.

@@ -88,11 +88,13 @@ hmi-certificate-system/
 | :--- | :--- |
 | Web entry and routing | `apps/web/src/main.tsx`, `apps/web/src/App.tsx` |
 | Event UI | `apps/web/src/features/events/events.tsx`, `apps/web/src/features/certificates/EventCertificateManagement.tsx` |
+| Participant CSV import UI | `apps/web/src/features/certificates/ParticipantImportWizard.tsx`, `apps/web/src/features/admin/csv-import.worker.ts` |
 | Certificate and public verification UI | `apps/web/src/features/certificates/certificates.tsx` |
 | Certify design system foundation | `apps/web/src/features/design-system/`, `apps/web/src/features/design-system/design-system.css` |
 | Shared browser API client | `apps/web/src/lib/api-client.ts` |
 | Hono app and route registration | `apps/api/src/app.ts` |
 | API route handlers | `apps/api/src/routes/` |
+| Participant import route and service | `apps/api/src/routes/participant-imports.ts`, `apps/api/src/services/participants/participant-import-service.ts` |
 | Business services | `apps/api/src/services/` |
 | Database repositories | `apps/api/src/repositories/` |
 | Drizzle schemas and client | `apps/api/src/db/schema/`, `apps/api/src/db/index.ts` |

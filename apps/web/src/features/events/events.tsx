@@ -5,14 +5,16 @@ import { CalendarDays, ChevronRight, CirclePlus, Clock3, MapPin, PencilLine, Use
 import { DateTimePicker } from '../../components/date-time/DatePickers'
 import { createEventSchema, updateEventSchema, EVENT_STATUSES, type EventCreateInput, type EventData } from '@hmi/shared'
 import { apiFetch } from '../../lib/api-client'
+import { formatEventDate } from '../../lib/format-event-date'
 import { fetchAccessibleEvents } from './event-queries'
+import { DetailSkeleton, EventListSkeleton, LoadingLabel } from '../../components/loading/LoadingUi'
 
 type EventInput = EventCreateInput
 type EventFilter = 'all' | 'draft' | 'published' | 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
 const eventKey = ['events']
 const emptyEvents: EventData['event'][] = []
 const friendlyError = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.'
-const formatDate = (date: string) => new Date(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const formatDate = (date: string) => formatEventDate(date)
 const formatRange = (event: Pick<EventData['event'], 'startDate' | 'endDate'>) => event.endDate ? `${new Date(event.startDate).toLocaleDateString()} – ${new Date(event.endDate).toLocaleDateString()}` : new Date(event.startDate).toLocaleDateString()
 const eventDraftLifetime = 7 * 24 * 60 * 60 * 1000
 
@@ -93,8 +95,8 @@ export function EventListPage({ admin = false }: { admin?: boolean }) {
           <option value="all">All events</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="draft">Drafts</option><option value="cancelled">Cancelled</option>
         </select></label>
       </div>
-      {events.isLoading ? <div className="aw-loading" role="status"><span className="aw-loading-dot" /> Loading your events…</div>
-        : events.error ? <p className="notice error" role="alert">{friendlyError(events.error)}</p>
+      {events.isLoading ? <EventListSkeleton />
+        : events.error ? <p className="notice error" role="alert">{friendlyError(events.error)} <button type="button" onClick={() => void events.refetch()}>Retry</button></p>
           : filtered.length ? <>
             <div className="aw-table-scroll"><table className="aw-table aw-events-table"><thead><tr><th>Event</th><th>Dates</th><th>Access</th><th>Status</th><th><span className="visually-hidden">Open</span></th></tr></thead><tbody>
               {visibleEvents.map((event) => <tr key={event.id}>
@@ -117,8 +119,8 @@ export function EventDetailsPage({ admin = false }: { admin?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const archive = useMutation({ mutationFn: () => apiFetch<EventData>(`/events/${eventId}`, { method: 'DELETE' }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: eventKey }); await queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] }); navigate(admin ? '/admin/events' : '/events', { state: { notice: 'Event archived. Participant and certificate history was retained.' } }) } })
-  if (event.isLoading) return <EventsLayout title="Event" admin={admin}><div className="aw-loading" role="status"><span className="aw-loading-dot" /> Loading event…</div></EventsLayout>
-  if (event.error || !event.data) return <EventsLayout title="Event" admin={admin}><p className="notice error" role="alert">{friendlyError(event.error)}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
+  if (event.isLoading) return <EventsLayout title="Event" admin={admin}><DetailSkeleton label="Loading event details" /></EventsLayout>
+  if (event.error || !event.data) return <EventsLayout title="Event" admin={admin}><p className="notice error" role="alert">{friendlyError(event.error)} {event.error && <button type="button" onClick={() => void event.refetch()}>Retry</button>}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
   const item = event.data.event
   const notice = (location.state as { notice?: string } | null)?.notice
   const base = admin ? '/admin/events' : '/events'
@@ -131,7 +133,7 @@ export function EventDetailsPage({ admin = false }: { admin?: boolean }) {
     <div className="aw-detail-grid">
       <section className="aw-panel"><header className="aw-panel-head"><h2>Event information</h2></header><p className="aw-event-description">{item.description || 'No description has been added.'}</p><dl className="aw-detail-list"><div><dt><Clock3 size={15} /> Starts</dt><dd>{formatDate(item.startDate)}</dd></div><div><dt><Clock3 size={15} /> Ends</dt><dd>{item.endDate ? formatDate(item.endDate) : 'Not specified'}</dd></div><div><dt>Status</dt><dd><span className={`aw-status-badge aw-status-${item.status}`}>{item.status}</span></dd></div><div><dt>Access</dt><dd>{item.accessRole}</dd></div></dl></section>
       {item.accessRole === 'admin' ? <section className="aw-panel aw-event-workflows"><header className="aw-panel-head"><h2>Manage this event</h2></header><Link to={`/admin/participants/${item.id}`}><span className="aw-workflow-icon"><Users size={17} /></span><span><strong>Participants</strong><small>Review registrations and attendance</small></span><ChevronRight size={17} /></Link><Link to={`/admin/certificates/${item.id}`}><span className="aw-workflow-icon aw-workflow-icon--blue"><CalendarDays size={17} /></span><span><strong>Certificates</strong><small>Issue and manage event certificates</small></span><ChevronRight size={17} /></Link>
-        <button className="aw-button aw-button--danger aw-archive-button" disabled={archive.isPending} onClick={() => { if (window.confirm('Archive this event? Its participant and certificate history will be retained.')) archive.mutate() }}>{archive.isPending ? 'Archiving…' : 'Archive event'}</button>
+        <button className="aw-button aw-button--danger aw-archive-button" disabled={archive.isPending} aria-busy={archive.isPending} onClick={() => { if (window.confirm('Archive this event? Its participant and certificate history will be retained.')) archive.mutate() }}>{archive.isPending ? <LoadingLabel>Archiving</LoadingLabel> : 'Archive event'}</button>
         {archive.error && <p className="notice error" role="alert">{friendlyError(archive.error)}</p>}
       </section> : <section className="aw-panel"><header className="aw-panel-head"><h2>Event access</h2></header><p className="aw-event-description">You have {item.accessRole} access to this event. Event management tools are available to event administrators.</p></section>}
     </div>
@@ -176,8 +178,8 @@ export function EventFormPage({ mode, admin = false }: { mode: 'create' | 'edit'
     try { localStorage.setItem(draftKey, JSON.stringify(draft)) } catch { /* Drafts are best effort when browser storage is unavailable. */ }
   }, [activeStep, currentDescription, currentEnd, currentName, currentStart, currentStatus, draftKey, draftRevision, edit])
 
-  if (edit && existing.isLoading) return <EventsLayout title="Edit event" admin={admin}><div className="aw-loading" role="status"><span className="aw-loading-dot" /> Loading event…</div></EventsLayout>
-  if (edit && (existing.error || !existing.data || existing.data.event.accessRole !== 'admin')) return <EventsLayout title="Edit event" admin={admin}><p className="notice error" role="alert">{existing.error ? friendlyError(existing.error) : 'Event admin access is required.'}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
+  if (edit && existing.isLoading) return <EventsLayout title="Edit event" admin={admin}><DetailSkeleton label="Loading event details" /></EventsLayout>
+  if (edit && (existing.error || !existing.data || existing.data.event.accessRole !== 'admin')) return <EventsLayout title="Edit event" admin={admin}><p className="notice error" role="alert">{existing.error ? friendlyError(existing.error) : 'Event admin access is required.'} {existing.error && <button type="button" onClick={() => void existing.refetch()}>Retry</button>}</p><Link className="aw-button" to={admin ? '/admin/events' : '/events'}>Back to events</Link></EventsLayout>
   function continueToSchedule() {
     setValidation('')
     if (!currentName.trim()) {
@@ -224,7 +226,7 @@ export function EventFormPage({ mode, admin = false }: { mode: 'create' | 'edit'
           <label className="aw-field">Event status<select name="status" value={currentStatus} onChange={(event) => setStatus(event.target.value as EventInput['status'])}>{EVENT_STATUSES.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}</select><small>Choose a status supported by the event workflow.</small></label>
         </>}
         {validation && <p className="notice error" role="alert">{validation}</p>}{mutation.error && <p className="notice error" role="alert">{friendlyError(mutation.error)}</p>}
-        <div className="aw-wizard-footer"><Link className="aw-button" onClick={() => { if (!edit) clearEventDraft(draftKey) }} to={edit && item ? `${admin ? '/admin/events' : '/events'}/${item.id}` : admin ? '/admin/events' : '/events'}>Cancel</Link><div className="aw-wizard-actions">{activeStep === 1 && <button className="aw-button" type="button" onClick={() => { setActiveStep(0); setValidation('') }}>Back</button>}<button className="aw-button aw-button--primary" disabled={mutation.isPending} type="submit">{activeStep === 0 ? 'Continue' : mutation.isPending ? 'Saving…' : edit ? 'Save changes' : 'Create event'} {activeStep === 0 && <ChevronRight size={15} />}</button></div></div>
+        <div className="aw-wizard-footer"><Link className="aw-button" onClick={() => { if (!edit) clearEventDraft(draftKey) }} to={edit && item ? `${admin ? '/admin/events' : '/events'}/${item.id}` : admin ? '/admin/events' : '/events'}>Cancel</Link><div className="aw-wizard-actions">{activeStep === 1 && <button className="aw-button" type="button" onClick={() => { setActiveStep(0); setValidation('') }}>Back</button>}<button className="aw-button aw-button--primary" disabled={mutation.isPending} type="submit">{activeStep === 0 ? 'Continue' : mutation.isPending ? <LoadingLabel>Saving</LoadingLabel> : edit ? 'Save changes' : 'Create event'} {activeStep === 0 && <ChevronRight size={15} />}</button></div></div>
       </form>
       <aside className="aw-preview-column"><section className="aw-panel aw-event-preview"><div className="aw-preview-icon"><CalendarDays size={24} /></div><span className={`aw-status-badge aw-status-${currentStatus}`}>{currentStatus}</span><h2>{currentName || 'Event name will appear here'}</h2><p>{currentDescription || 'Add a description to introduce this event to participants.'}</p><div className="aw-preview-meta"><span><Clock3 size={14} /> {currentStart ? formatDate(localDateTimeToIso(currentStart)) : 'Start date · End date'}</span><span><MapPin size={14} /> Location is not part of the current event record</span></div><small>Preview reflects fields supported by the current event API.</small></section></aside>
     </div>

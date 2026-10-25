@@ -1,0 +1,55 @@
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { events } from './events.js'
+import { users } from './users.js'
+
+export type ParticipantImportStatus = 'upload_pending' | 'uploaded' | 'validating' | 'validated' | 'queued' | 'importing' | 'completed' | 'partial' | 'failed' | 'cancelled'
+export type ParticipantDuplicatePolicy = 'skip' | 'update'
+export type ParticipantImportMapping = { name: number; email: number; phone?: number; organization?: number }
+export type ParticipantImportRowError = { row: number; name: string; email: string; reason: string; existingParticipantId?: string }
+
+export const participantImportJobs = pgTable('participant_import_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'restrict' }),
+  actorUserId: uuid('actor_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  status: text('status').$type<ParticipantImportStatus>().notNull().default('upload_pending'),
+  bucket: text('bucket').notNull(),
+  objectKey: text('object_key').notNull().unique(),
+  sourceFileName: text('source_file_name').notNull(),
+  contentType: text('content_type').notNull(),
+  fileSizeBytes: integer('file_size_bytes').notNull(),
+  checksumSha256: text('checksum_sha256').notNull(),
+  mapping: jsonb('mapping').$type<ParticipantImportMapping>(),
+  duplicatePolicy: text('duplicate_policy').$type<ParticipantDuplicatePolicy>().notNull().default('skip'),
+  totalRows: integer('total_rows').notNull().default(0),
+  validRows: integer('valid_rows').notNull().default(0),
+  duplicateRows: integer('duplicate_rows').notNull().default(0),
+  invalidRows: integer('invalid_rows').notNull().default(0),
+  expectedNew: integer('expected_new').notNull().default(0),
+  expectedUpdates: integer('expected_updates').notNull().default(0),
+  processedRows: integer('processed_rows').notNull().default(0),
+  createdCount: integer('created_count').notNull().default(0),
+  updatedCount: integer('updated_count').notNull().default(0),
+  skippedCount: integer('skipped_count').notNull().default(0),
+  rowErrors: jsonb('row_errors').$type<ParticipantImportRowError[]>().notNull().default([]),
+  errorMessage: text('error_message'),
+  cancelRequested: boolean('cancel_requested').notNull().default(false),
+  objectDeleted: boolean('object_deleted').notNull().default(false),
+  lockExpiresAt: timestamp('lock_expires_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  validatedAt: timestamp('validated_at', { withTimezone: true }),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check('participant_import_jobs_status_check', sql`${table.status} IN ('upload_pending', 'uploaded', 'validating', 'validated', 'queued', 'importing', 'completed', 'partial', 'failed', 'cancelled')`),
+  check('participant_import_jobs_duplicate_policy_check', sql`${table.duplicatePolicy} IN ('skip', 'update')`),
+  check('participant_import_jobs_file_size_check', sql`${table.fileSizeBytes} BETWEEN 1 AND 20971520`),
+  check('participant_import_jobs_counts_check', sql`${table.totalRows} >= 0 AND ${table.validRows} >= 0 AND ${table.duplicateRows} >= 0 AND ${table.invalidRows} >= 0 AND ${table.processedRows} >= 0 AND ${table.createdCount} >= 0 AND ${table.updatedCount} >= 0 AND ${table.skippedCount} >= 0`),
+  index('participant_import_jobs_event_created_idx').on(table.eventId, table.createdAt),
+  index('participant_import_jobs_worker_idx').on(table.status, table.lockExpiresAt),
+  uniqueIndex('participant_import_jobs_active_event_uidx').on(table.eventId).where(sql`${table.status} IN ('upload_pending', 'uploaded', 'validating', 'validated', 'queued', 'importing', 'partial')`),
+])
+
+export type ParticipantImportJob = typeof participantImportJobs.$inferSelect

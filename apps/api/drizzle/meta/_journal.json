@@ -29,6 +29,13 @@
       "when": 1792475968665,
       "tag": "0003_certificate_event_recipient_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792829476127,
+      "tag": "0004_participant_import_workflow",
+      "breakpoints": true
     }
   ]
 }

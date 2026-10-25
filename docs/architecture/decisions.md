@@ -98,3 +98,16 @@ This document captures architectural and technology decisions established in the
   - `AGENTS.md` (Sections 3, 4)
   - `apps/api/src/db/schema/users.ts`
 - **Known Trade-offs**: Requires backend token validation and explicit mapping logic between verified identity provider tokens and application user profiles.
+
+---
+
+### ADR-009: Direct Private CSV Upload with Confirm-Gated Import
+
+- **Decision**: Upload participant CSV bytes directly from the browser to a private S3-compatible bucket using a short-lived, server-signed PUT URL. Persist import jobs and worker progress in PostgreSQL, validate the stored file server-side, and require explicit event-admin confirmation before participant writes.
+- **Reason**: Avoid routing large files through the API, make refresh/retry safe, and separate preview/validation from the participant registration step. Keep attendees without accounts as guest participant records rather than creating identities or linking by unverified email.
+- **Relevant Files**:
+  - `apps/api/src/services/participants/participant-import-service.ts`
+  - `apps/api/src/services/participants/participant-import-storage.ts`
+  - `apps/api/src/db/schema/participant-import-jobs.ts`
+  - `apps/web/src/features/certificates/ParticipantImportWizard.tsx`
+- **Known Trade-offs**: Requires a private bucket, exact-origin browser CORS, scoped IAM, and temporary object cleanup. Guest certificate PDFs can be managed by event admins and publicly verified; private owner downloads require an authenticated account relationship.

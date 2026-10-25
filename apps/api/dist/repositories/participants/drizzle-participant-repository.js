@@ -22,11 +22,22 @@ export class DrizzleParticipantRepository {
         const visibility = or(eq(events.status, 'published'), sql `${eventMemberships.userId} IS NOT NULL`);
         const conditions = [isNull(events.archivedAt), visibility, searchCondition(input.search)].filter(Boolean);
         const where = and(...conditions);
+        const registrationCounts = this.db.select({
+            eventId: eventRegistrations.eventId,
+            participantCount: count().as('participantCount'),
+        }).from(eventRegistrations)
+            .where(ne(eventRegistrations.status, 'cancelled'))
+            .groupBy(eventRegistrations.eventId).as('registration_counts');
         const [totalRow] = await this.db.select({ total: count() }).from(events)
             .leftJoin(eventMemberships, and(eq(eventMemberships.eventId, events.id), eq(eventMemberships.userId, userId)))
             .where(where);
-        const rows = await this.db.select({ ...eventColumns, accessRole: eventMemberships.role }).from(events)
+        const rows = await this.db.select({
+            ...eventColumns,
+            accessRole: eventMemberships.role,
+            participantCount: sql `case when ${eventMemberships.role} = 'admin' then coalesce(${registrationCounts.participantCount}, 0) else null end`,
+        }).from(events)
             .leftJoin(eventMemberships, and(eq(eventMemberships.eventId, events.id), eq(eventMemberships.userId, userId)))
+            .leftJoin(registrationCounts, eq(registrationCounts.eventId, events.id))
             .where(where).orderBy(asc(events.startDate), asc(events.createdAt)).limit(input.pageSize).offset(offset(input));
         return { events: rows, total: totalRow.total };
     }
@@ -109,10 +120,12 @@ export class DrizzleParticipantRepository {
         return Boolean(row);
     }
     async listEventParticipants(eventId, input) {
-        const where = and(eq(eventRegistrations.eventId, eventId), input.status ? eq(eventRegistrations.status, input.status) : undefined, input.search ? ilike(users.name, `%${input.search}%`) : undefined);
-        const [totalRow] = await this.db.select({ total: count() }).from(eventRegistrations).innerJoin(participants, eq(eventRegistrations.participantId, participants.id)).innerJoin(users, eq(participants.userId, users.id)).where(where);
-        const rows = await this.db.select({ participantId: participants.id, userId: users.id, name: users.name, email: users.email, registrationId: eventRegistrations.id, status: eventRegistrations.status, registeredAt: eventRegistrations.registeredAt })
-            .from(eventRegistrations).innerJoin(participants, eq(eventRegistrations.participantId, participants.id)).innerJoin(users, eq(participants.userId, users.id))
+        const displayName = sql `coalesce(${users.name}, ${participants.name}, '')`;
+        const displayEmail = sql `coalesce(${users.email}, ${participants.email}, '')`;
+        const where = and(eq(eventRegistrations.eventId, eventId), input.status ? eq(eventRegistrations.status, input.status) : undefined, input.search ? or(ilike(displayName, `%${input.search}%`), ilike(displayEmail, `%${input.search}%`)) : undefined);
+        const [totalRow] = await this.db.select({ total: count() }).from(eventRegistrations).innerJoin(participants, eq(eventRegistrations.participantId, participants.id)).leftJoin(users, eq(participants.userId, users.id)).where(where);
+        const rows = await this.db.select({ participantId: participants.id, userId: participants.userId, name: displayName, email: displayEmail, phone: participants.phone, organization: participants.organization, registrationId: eventRegistrations.id, status: eventRegistrations.status, registeredAt: eventRegistrations.registeredAt })
+            .from(eventRegistrations).innerJoin(participants, eq(eventRegistrations.participantId, participants.id)).leftJoin(users, eq(participants.userId, users.id))
             .where(where).orderBy(asc(users.name)).limit(input.pageSize).offset(offset(input));
         return { participants: rows, total: totalRow.total };
     }

@@ -12,6 +12,7 @@ const environmentSchema = z.object({
     AWS_REGION: z.string().trim().min(1).optional(),
     AWS_ENDPOINT_URL_S3: z.string().url().optional(),
     CERTIFICATE_S3_BUCKET: z.string().trim().min(3).optional(),
+    PARTICIPANT_IMPORT_S3_BUCKET: z.string().trim().min(3).optional(),
     CERTIFICATE_PUBLIC_VERIFY_BASE_URL: z.string().url().optional(),
 });
 const result = environmentSchema.safeParse(process.env);
@@ -21,8 +22,8 @@ if (!result.success) {
 if (result.data.DEV_EMAIL_ENABLED === "true" && result.data.NODE_ENV !== "development") {
     throw new Error("DEV_EMAIL_ENABLED can only be enabled when NODE_ENV=development");
 }
-if (result.data.CERTIFICATE_S3_BUCKET && !result.data.AWS_REGION) {
-    throw new Error("AWS_REGION is required when CERTIFICATE_S3_BUCKET is configured");
+if ((result.data.CERTIFICATE_S3_BUCKET || result.data.PARTICIPANT_IMPORT_S3_BUCKET) && !result.data.AWS_REGION) {
+    throw new Error("AWS_REGION is required when S3 storage is configured");
 }
 const publicVerifyBaseUrl = result.data.CERTIFICATE_PUBLIC_VERIFY_BASE_URL ?? `${result.data.AUTH_WEB_ORIGIN.replace(/\/$/, "")}/verify`;
 if (result.data.NODE_ENV === "production" && new URL(publicVerifyBaseUrl).protocol !== "https:") {
@@ -47,4 +48,9 @@ export const certificateConfig = {
     s3Endpoint: result.data.AWS_ENDPOINT_URL_S3,
     bucket: result.data.CERTIFICATE_S3_BUCKET,
     publicVerifyBaseUrl: publicVerifyBaseUrl.replace(/\/$/, ""),
+};
+export const participantImportConfig = {
+    awsRegion: result.data.AWS_REGION,
+    s3Endpoint: result.data.AWS_ENDPOINT_URL_S3,
+    bucket: result.data.PARTICIPANT_IMPORT_S3_BUCKET ?? result.data.CERTIFICATE_S3_BUCKET,
 };

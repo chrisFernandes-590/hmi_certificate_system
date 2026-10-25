@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server';
 import { S3Client } from '@aws-sdk/client-s3';
-import { authConfig, certificateConfig } from './config/auth-config.js';
+import { authConfig, certificateConfig, participantImportConfig } from './config/auth-config.js';
 import { db } from './db/index.js';
 import { createApp } from './app.js';
 import { DrizzleAuthRepository } from './repositories/auth/drizzle-auth-repository.js';
@@ -13,6 +13,9 @@ import { ParticipantService } from './services/participants/participant-service.
 import { DrizzleCertificateRepository } from './repositories/certificates/drizzle-certificate-repository.js';
 import { CertificateService } from './services/certificates/certificate-service.js';
 import { S3CertificateStorage } from './services/certificates/certificate-storage.js';
+import { LocalParticipantImportStorage, S3ParticipantImportStorage } from './services/participants/participant-import-storage.js';
+import { ParticipantImportService } from './services/participants/participant-import-service.js';
+import { DrizzleParticipantImportRepository } from './repositories/participants/drizzle-participant-import-repository.js';
 const emailProvider = authConfig.devEmailEnabled
     ? new DevelopmentConsoleEmailProvider()
     : new DisabledEmailProvider();
@@ -28,7 +31,15 @@ const certificateStorage = certificateConfig.awsRegion && certificateConfig.buck
         ...(certificateConfig.s3Endpoint ? { endpoint: certificateConfig.s3Endpoint, forcePathStyle: true } : {}),
     }), certificateConfig.bucket, certificateConfig.s3Endpoint ? undefined : 'AES256')
     : undefined;
-const app = createApp(authProvider, authConfig, new EventService(new DrizzleEventRepository(db)), new ParticipantService(new DrizzleParticipantRepository(db)), new CertificateService(new DrizzleCertificateRepository(db), certificateStorage, certificateConfig.publicVerifyBaseUrl));
+const importStorage = participantImportConfig.awsRegion && participantImportConfig.bucket
+    ? new S3ParticipantImportStorage(new S3Client({
+        region: participantImportConfig.awsRegion,
+        ...(participantImportConfig.s3Endpoint ? { endpoint: participantImportConfig.s3Endpoint, forcePathStyle: true } : {}),
+    }), participantImportConfig.bucket, participantImportConfig.s3Endpoint)
+    : new LocalParticipantImportStorage();
+const participantImportService = new ParticipantImportService(new DrizzleParticipantImportRepository(db), importStorage, participantImportConfig.bucket ?? 'local-participant-imports');
+const app = createApp(authProvider, authConfig, new EventService(new DrizzleEventRepository(db)), new ParticipantService(new DrizzleParticipantRepository(db)), new CertificateService(new DrizzleCertificateRepository(db), certificateStorage, certificateConfig.publicVerifyBaseUrl), participantImportService);
+participantImportService.startWorker();
 serve({ fetch: app.fetch, port: authConfig.port }, (info) => {
     console.log(`Server is running on http://localhost:${info.port}`);
 });

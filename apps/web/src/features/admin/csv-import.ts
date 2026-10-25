@@ -1,5 +1,9 @@
 export type ParticipantImportRow = { name: string; email: string; ok: boolean }
 export type CsvImportProgress = { bytesRead: number; totalBytes: number; rowsParsed: number }
+export type CsvColumnMapping = { name: number; email: number; phone?: number; organization?: number }
+export type CsvInspection = { headers: string[]; rowCount: number; previewRows: string[][]; suggested: { name?: number; email?: number; phone?: number; organization?: number } }
+export type LocalCsvContact = { row: number; name: string; email: string; phone: string; organization: string; issue?: string }
+export type LocalCsvValidation = { headers: string[]; rowCount: number; validRows: number; duplicateRows: number; invalidRows: number; errors: LocalCsvContact[]; previewRows: LocalCsvContact[] }
 
 const MAX_PARTICIPANTS = 20_000
 const YIELD_EVERY_ROWS = 400
@@ -53,7 +57,7 @@ export async function parseParticipantCsv(
       charactersSinceYield++
       if (charactersSinceYield >= 32_768) {
         charactersSinceYield = 0
-        await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0))
       }
       const char = text[index]
       if (skipLeadingLineFeed) {
@@ -95,7 +99,7 @@ export async function parseParticipantCsv(
 
       if (processedSinceYield >= YIELD_EVERY_ROWS) {
         processedSinceYield = 0
-        await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0))
       }
     }
     if (finalChunk && pendingQuotedQuote) {
@@ -125,4 +129,25 @@ export async function parseParticipantCsv(
   } finally {
     reader.releaseLock()
   }
+}
+
+export function inspectParticipantCsv(file: File, onProgress: (progress: CsvImportProgress) => void) {
+  return runCsvWorker<CsvInspection>({ type: 'inspect', file }, onProgress)
+}
+
+export function validateParticipantCsvLocally(file: File, mapping: CsvColumnMapping, onProgress: (progress: CsvImportProgress) => void) {
+  return runCsvWorker<LocalCsvValidation>({ type: 'validate', file, mapping }, onProgress)
+}
+
+function runCsvWorker<T>(request: { type: 'inspect' | 'validate'; file: File; mapping?: CsvColumnMapping }, onProgress: (progress: CsvImportProgress) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./csv-import.worker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (event: MessageEvent<{ type: 'progress'; bytesRead: number; totalBytes: number; rowsParsed: number } | { type: 'result'; result: T } | { type: 'error'; error: string }>) => {
+      if (event.data.type === 'progress') onProgress({ bytesRead: event.data.bytesRead, totalBytes: event.data.totalBytes, rowsParsed: event.data.rowsParsed })
+      if (event.data.type === 'result') { worker.terminate(); resolve(event.data.result) }
+      if (event.data.type === 'error') { worker.terminate(); reject(new Error(event.data.error)) }
+    }
+    worker.onerror = () => { worker.terminate(); reject(new Error('Could not inspect this CSV. Try selecting the file again.')) }
+    worker.postMessage(request)
+  })
 }

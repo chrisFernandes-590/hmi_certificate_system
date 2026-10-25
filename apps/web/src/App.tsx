@@ -1,23 +1,29 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
 import { apiRequest } from './lib/api-client'
 import { useAuth } from './lib/use-auth'
 import './App.css'
-import { EventDetailsPage, EventFormPage, EventListPage } from './features/events/events'
 import { LoginPage } from './features/auth/pages/LoginPage'
-import { SignupPage } from './features/auth/pages/SignupPage'
-import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
-import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
-import { NotFoundPage } from './features/errors/pages/NotFoundPage'
-import { CertificateDetailsPage, MyCertificatesPage, PublicCertificateVerificationPage } from './features/certificates/certificates'
-import { AdminWorkspace } from './features/admin/AdminWorkspace'
 import { RouteNavigation } from './features/navigation/RouteNavigation'
 import { DatePickerDemo } from './components/date-time/DatePickerDemo'
+import { AuthShellSkeleton, CertificateListSkeleton, DashboardSkeleton, DetailSkeleton, EventListSkeleton, LoadingLabel, RouteErrorBoundary, TableSkeleton } from './components/loading/LoadingUi'
+
+const AdminWorkspace = lazy(() => import('./features/admin/AdminWorkspace').then((module) => ({ default: module.AdminWorkspace })))
+const EventListPage = lazy(() => import('./features/events/events').then((module) => ({ default: module.EventListPage })))
+const EventDetailsPage = lazy(() => import('./features/events/events').then((module) => ({ default: module.EventDetailsPage })))
+const EventFormPage = lazy(() => import('./features/events/events').then((module) => ({ default: module.EventFormPage })))
+const MyCertificatesPage = lazy(() => import('./features/certificates/certificates').then((module) => ({ default: module.MyCertificatesPage })))
+const CertificateDetailsPage = lazy(() => import('./features/certificates/certificates').then((module) => ({ default: module.CertificateDetailsPage })))
+const PublicCertificateVerificationPage = lazy(() => import('./features/certificates/certificates').then((module) => ({ default: module.PublicCertificateVerificationPage })))
+const SignupPage = lazy(() => import('./features/auth/pages/SignupPage').then((module) => ({ default: module.SignupPage })))
+const ForgotPasswordPage = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('./features/auth/pages/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })))
+const NotFoundPage = lazy(() => import('./features/errors/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <main className="auth-shell"><p>Restoring your session…</p></main>
+  if (loading) return <AuthShellSkeleton />
   return user ? children : <Navigate to="/login" replace />
 }
 
@@ -51,12 +57,20 @@ function AccountPage() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not sign out. Please try again.') }
     finally { setBusy(false) }
   }
-  return <AuthLayout title="Your account" navigation><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/admin/dashboard">Open admin workspace</Link></p><p><Link to="/events">Manage events</Link></p><p><Link to="/certificates">My certificates</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} onClick={signOut}>{busy ? 'Signing out…' : 'Sign out'}</button></AuthLayout>
+  return <AuthLayout title="Your account" navigation><p>Signed in as <strong>{user?.name}</strong></p><p>{user?.email}</p><p><Link to="/admin/dashboard">Open admin workspace</Link></p><p><Link to="/events">Manage events</Link></p><p><Link to="/certificates">My certificates</Link></p>{error && <p className="notice error" role="alert">{error}</p>}<button disabled={busy} aria-busy={busy} onClick={signOut}>{busy ? <LoadingLabel>Signing out</LoadingLabel> : 'Sign out'}</button></AuthLayout>
 }
 
 function AppRoutes() {
   const { user } = useAuth()
-  return <Routes>
+  const location = useLocation()
+  const pathname = location.pathname
+  const fallback = pathname.startsWith('/admin/dashboard') ? <DashboardSkeleton />
+    : /^\/certificates\/[^/]+$/.test(pathname) || /^\/events\/[^/]+$/.test(pathname) || /^\/admin\/events\/[^/]+$/.test(pathname) ? <DetailSkeleton />
+    : pathname.includes('/participants/') || pathname.includes('/certificates/') ? <TableSkeleton />
+      : pathname === '/certificates' || pathname === '/admin/my-certificates' ? <CertificateListSkeleton />
+        : pathname.includes('/events') ? <EventListSkeleton />
+          : <AuthShellSkeleton />
+  return <RouteErrorBoundary key={pathname}><Suspense fallback={fallback}><Routes>
     {import.meta.env.DEV && <Route path="/__picker-preview" element={<DatePickerDemo />} />}
     <Route path="/" element={<Navigate to={user ? '/admin/dashboard' : '/login'} replace />} />
     <Route path="/login" element={<LoginPage />} />
@@ -75,7 +89,7 @@ function AppRoutes() {
     <Route path="/events/:eventId" element={<Protected><EventDetailsPage /></Protected>} />
     <Route path="/events/:eventId/edit" element={<Protected><EventFormPage mode="edit" /></Protected>} />
     <Route path="*" element={<NotFoundPage />} />
-  </Routes>
+  </Routes></Suspense></RouteErrorBoundary>
 }
 
 export default function App() {

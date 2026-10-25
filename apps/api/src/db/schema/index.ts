@@ -16,3 +16,4 @@ export * from "./certificate-templates.js";
 export * from "./certificates.js";
 export * from "./certificate-assets.js";
 export * from "./audit-logs.js";
+export * from "./participant-import-jobs.js";

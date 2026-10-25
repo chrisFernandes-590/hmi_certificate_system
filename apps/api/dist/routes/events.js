@@ -35,7 +35,7 @@ export async function listEventsResponse(c, events, participants) {
         if (!query.success)
             throw new AppError(400, 'Invalid query parameters', query.error.issues.map(({ path, message }) => ({ field: path.join('.'), message })));
         const result = await participants.listDiscoverableEvents(c.get('authUser').id, query.data);
-        return successResponse(c, { ...result, events: result.events.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize });
+        return successResponse(c, { ...result, events: result.events.map(({ accessRole, participantCount, ...event }) => ({ ...toEventDto(event), accessRole, participantCount: accessRole === 'admin' ? participantCount : null, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize });
     }
     const accessibleEvents = await events.listAccessible(c.get('authUser').id);
     return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) });
@@ -47,6 +47,9 @@ export function createEventRoutes(auth, events, webOrigin, participants) {
     const listEvents = asyncHandler((c) => listEventsResponse(c, events, participants));
     routes.get('/', requireAuth, listEvents);
     routes.get('', requireAuth, listEvents);
+    routes.get('/admin-dashboard', requireAuth, asyncHandler(async (c) => {
+        return successResponse(c, await events.getAdminDashboardStats(c.get('authUser').id));
+    }));
     routes.post('/', requireAuth, requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, createEventSchema);
         const event = await events.create(c.get('authUser').id, {

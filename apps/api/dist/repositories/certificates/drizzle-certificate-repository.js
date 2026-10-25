@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { AppError } from '../../errors/app-error.js';
 import { auditLogs, certificateAssets, certificates, eventMemberships, eventRegistrations, events, participants, users } from '../../db/schema.js';
 export class DrizzleCertificateRepository {
@@ -14,9 +14,9 @@ export class DrizzleCertificateRepository {
         return row;
     }
     async findEligibleRecipient(eventId, participantId) {
-        const [row] = await this.db.select({ participantId: participants.id, userId: users.id, name: users.name, registrationStatus: eventRegistrations.status })
+        const [row] = await this.db.select({ participantId: participants.id, userId: participants.userId, name: sql `coalesce(${users.name}, ${participants.name}, '')`, registrationStatus: eventRegistrations.status })
             .from(eventRegistrations).innerJoin(participants, eq(eventRegistrations.participantId, participants.id))
-            .innerJoin(users, eq(participants.userId, users.id))
+            .leftJoin(users, eq(participants.userId, users.id))
             .where(and(eq(eventRegistrations.eventId, eventId), eq(eventRegistrations.participantId, participantId), inArray(eventRegistrations.status, ['registered', 'attended'])))
             .limit(1);
         return row;
@@ -69,8 +69,9 @@ export class DrizzleCertificateRepository {
         });
     }
     async findOwnedPdf(userId, certificateId) {
-        const [row] = await this.db.select({ ownerUserId: participants.userId, certificateNumber: certificates.certificateNumber, status: certificates.status, storageKey: certificateAssets.storageKey, mimeType: certificateAssets.mimeType, checksumSha256: certificateAssets.checksumSha256 })
+        const [row] = await this.db.select({ ownerUserId: users.id, certificateNumber: certificates.certificateNumber, status: certificates.status, storageKey: certificateAssets.storageKey, mimeType: certificateAssets.mimeType, checksumSha256: certificateAssets.checksumSha256 })
             .from(certificates).innerJoin(participants, eq(certificates.participantId, participants.id))
+            .innerJoin(users, eq(participants.userId, users.id))
             .innerJoin(certificateAssets, and(eq(certificateAssets.certificateId, certificates.id), eq(certificateAssets.type, 'pdf')))
             .where(and(eq(certificates.id, certificateId), eq(participants.userId, userId), inArray(certificates.status, ['issued', 'revoked'])))
             .limit(1);

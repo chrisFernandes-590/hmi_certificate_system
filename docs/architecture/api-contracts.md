@@ -65,7 +65,7 @@ Create example:
 ```
 
 Success data contains `{ "event": { ...event, "accessRole": "admin" } }` (HTTP `201` on create); list data contains `{ "events": [...] }`. Dates must be ISO date-time values and the end must not precede the start. User IDs and roles are derived from the session and database membership, never request bodies. Admin is scoped to one event. DELETE sets `archivedAt`; it preserves the event row and its registration, participant, and certificate history. Archived events are omitted from list and detail access.
-The event list does not include participant or certificate counts; the frontend does not estimate these values.
+The event list includes `participantCount` for event admins. It is calculated with one grouped registration-count query, excludes cancelled registrations, and is `null` for non-admin memberships. The current participant workflow has no pending-approval status, so the API does not return pending counts. Certificate counts remain unavailable in the event list.
 
 Shared JSON contracts live in `packages/shared` (`@hmi/shared`): authentication request schemas/types, event statuses/roles and create/update schemas, event DTOs, public user and auth response types, and success/error envelope types. API route validation and frontend form validation use the shared auth and event schemas. Database records and authorization logic remain in the API.
 
@@ -93,6 +93,10 @@ conflict handling prevents concurrent duplicates. Cancellation marks the
 registration row instead of deleting it; an eligible participant can register
 again before the event starts, reusing that row.
 
+Manual attendee creation and CSV import use the same event-level registration
+window: the event must be published, active, and before its start time. The
+import checks this at final confirmation and again inside each write batch.
+
 | Method | Path | Purpose | Access |
 | --- | --- | --- | --- |
 | `GET` | `/api/me/events` | Paginated registrations belonging to the current user | Authenticated |
@@ -101,6 +105,15 @@ again before the event starts, reusing that row.
 | `DELETE` | `/api/events/:eventId/registration` | Cancel an active registration before event start | Authenticated, Origin protected for web |
 | `GET` | `/api/events/:eventId/participants` | List participant registrations and contact details | Admin of that event |
 | `PATCH` | `/api/events/:eventId/participants/:participantId` | Set a registration to `registered`, `attended`, or `absent` | Admin of that event |
+| `POST` | `/api/events/:eventId/participants` | Add a managed attendee with name/email and optional phone/organization | Event admin; Origin protected |
+| `POST` | `/api/events/:eventId/participants/import/upload-url` | Create an import job and issue a short-lived direct-to-storage PUT URL | Event admin; Origin protected |
+| `POST` | `/api/events/:eventId/participants/import/:uploadId/upload-url` | Renew an uncompleted upload URL for the same object | Event admin; Origin protected |
+| `POST` | `/api/events/:eventId/participants/import/:uploadId/complete` | Verify object checksum/metadata and start server-side validation | Event admin; Origin protected |
+| `GET` | `/api/events/:eventId/participants/import-jobs` | List recent import jobs for recovery/history | Event admin |
+| `GET` | `/api/admin/import-jobs/:jobId` | Read validation progress and result | Event admin for the job's event |
+| `GET` | `/api/admin/import-jobs/:jobId/errors.csv` | Download a CSV of validation and duplicate issues | Event admin for the job's event |
+| `POST` | `/api/admin/import-jobs/:jobId/confirm` | Explicitly queue validated participant writes; retry resumes saved progress | Event admin; Origin protected |
+| `POST` | `/api/admin/import-jobs/:jobId/cancel` | Cancel a pending or active job | Event admin; Origin protected |
 | `GET` | `/api/me/certificates` | Paginated current-user certificates, optional `eventId` and `status` | Authenticated |
 | `GET` | `/api/certificates/:certificateId` | Certificate metadata when owned by current user | Authenticated |
 | `GET` | `/api/certificates/:certificateId/pdf` | Stream the authorized private PDF | Certificate owner |
@@ -114,8 +127,9 @@ client-supplied owner ID. Revoked certificates remain visible with
 `status: "revoked"` and `revokedAt` populated when present. PDF metadata is
 stored in `certificate_assets`; the AWS SDK adapter streams the private file
 only after ownership authorization. S3 must be configured before issuing or
-downloading PDFs. Participant metadata routes need no migration; issuance uses
-the additive uniqueness migration described below.
+downloading PDFs. The participant import workflow uses migration `0004` for
+guest attendee profiles and durable import jobs. Guest attendee email addresses
+are not automatically linked to application accounts.
 
 Example registration success (`201`):
 

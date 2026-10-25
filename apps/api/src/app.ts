@@ -15,6 +15,8 @@ import type { EventService } from './services/events/event-service.js'
 import type { ParticipantService } from './services/participants/participant-service.js'
 import { createCertificateRoutes } from './routes/certificates.js'
 import type { CertificateService } from './services/certificates/certificate-service.js'
+import { createParticipantImportRoutes } from './routes/participant-imports.js'
+import type { ParticipantImportService } from './services/participants/participant-import-service.js'
 import type { PublicUser } from '@hmi/shared'
 
 export type AuthAppConfig = {
@@ -48,7 +50,7 @@ function clearSessionCookie(c: Context, config: AuthAppConfig) {
   })
 }
 
-export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService, participantService?: ParticipantService, certificateService?: CertificateService) {
+export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService, participantService?: ParticipantService, certificateService?: CertificateService, participantImportService?: ParticipantImportService) {
   const app = new Hono<{ Variables: Variables }>()
   app.onError(apiErrorHandler)
   app.notFound(apiNotFoundHandler)
@@ -109,6 +111,9 @@ export function createApp(auth: AuthProvider, config: AuthAppConfig, eventServic
   }
   if (participantService) {
     app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin))
+  }
+  if (participantImportService) {
+    app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin))
   }
   return app
 }

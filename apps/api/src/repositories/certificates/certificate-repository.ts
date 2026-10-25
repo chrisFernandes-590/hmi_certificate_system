@@ -1,5 +1,5 @@
 export type AdminEvent = { id: string; name: string }
-export type CertificateRecipient = { participantId: string; userId: string; name: string; registrationStatus: string }
+export type CertificateRecipient = { participantId: string; userId: string | null; name: string; registrationStatus: string }
 export type CertificateDraftInput = {
   id: string; certificateNumber: string; verificationToken: string; eventId: string; participantId: string
   issuerId: string; issuerName: string; participantName: string; eventName: string; title: string; description: string | null

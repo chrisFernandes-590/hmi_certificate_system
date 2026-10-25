@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   check,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./users.js";
@@ -21,10 +22,13 @@ export const participants = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     // One-to-one: each user account maps to at most one participant profile.
-    userId: uuid("user_id")
-      .notNull()
-      .unique()
-      .references(() => users.id, { onDelete: "cascade" }),
+    // Nullable for admin-managed event attendees who do not yet have an account.
+    // Such profiles are never linked to a user by an unverified email address.
+    userId: uuid("user_id").unique().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name"),
+    email: text("email"),
+    phone: text("phone"),
+    organization: text("organization"),
     // Age is optional; when supplied it must be a sensible positive value.
     age: integer("age"),
     course: text("course"),
@@ -33,7 +37,9 @@ export const participants = pgTable(
   },
   (table) => [
     // Application-layer age validation should also run; this is a safety net.
-    check("participants_age_check", sql`${table.age} IS NULL OR (${table.age} >= 0 AND ${table.age} <= 150)`),
+  check("participants_age_check", sql`${table.age} IS NULL OR (${table.age} >= 0 AND ${table.age} <= 150)`),
+    check("participants_managed_contact_check", sql`${table.userId} IS NOT NULL OR (${table.name} IS NOT NULL AND ${table.email} IS NOT NULL)`),
+    uniqueIndex("participants_managed_email_uidx").on(sql`lower(${table.email})`).where(sql`${table.email} IS NOT NULL`),
   ]
 );
 

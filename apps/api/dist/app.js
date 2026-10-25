@@ -11,6 +11,7 @@ import { createRateLimiter } from './middleware/rate-limit.js';
 import { createEventRoutes, listEventsResponse } from './routes/events.js';
 import { createParticipantRoutes } from './routes/participants.js';
 import { createCertificateRoutes } from './routes/certificates.js';
+import { createParticipantImportRoutes } from './routes/participant-imports.js';
 async function parseBody(c, schema) {
     let body;
     try {
@@ -36,7 +37,7 @@ function clearSessionCookie(c, config) {
         secure: config.secureCookies,
     });
 }
-export function createApp(auth, config, eventService, participantService, certificateService) {
+export function createApp(auth, config, eventService, participantService, certificateService, participantImportService) {
     const app = new Hono();
     app.onError(apiErrorHandler);
     app.notFound(apiNotFoundHandler);
@@ -96,6 +97,9 @@ export function createApp(auth, config, eventService, participantService, certif
     }
     if (participantService) {
         app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin));
+    }
+    if (participantImportService) {
+        app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin));
     }
     return app;
 }

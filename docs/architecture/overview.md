@@ -25,6 +25,7 @@ graph TD
     Web -.->|HTTP / REST| API
     API -->|Drizzle ORM / pg| DB
     API -.->|AWS SDK / IAM Role| S3
+    Web -.->|Short-lived signed CSV PUT| S3
     API -.->|Token Validation| Cognito
     Web -.->|Imports| Shared
     Mobile -.->|Imports| Shared
@@ -75,6 +76,15 @@ streaming a PDF. Public verification reads current status from PostgreSQL.
 Neon Object Storage is supported through the S3-compatible adapter; deployment
 must provide a private bucket and storage credentials. AWS S3 workloads should
 use the application IAM role.
+
+### Participant CSV import
+
+The browser inspects a CSV locally, requests a short-lived URL for a unique
+private S3 key, and uploads the file directly to storage. PostgreSQL stores the
+import job, mapping, validation results, and resumable worker progress. The API
+streams the object for validation and waits for an explicit admin confirmation
+before writing participant registrations. Admin-managed attendees have
+nullable account links; an email address alone never links a guest to a user.
 
 ### Backend to Database
 - **Pattern**: Database access uses Drizzle ORM queries and migrations over PostgreSQL (Neon Serverless in development, Amazon RDS in production).
