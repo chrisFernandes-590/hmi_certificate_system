@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { CalendarDays, ChevronRight, CirclePlus, Clock3, MapPin, PencilLine, Users } from 'lucide-react'
+import { CalendarDays, ChevronRight, Clock3, MapPin, PencilLine, Users } from 'lucide-react'
 import { DateTimePicker } from '../../components/date-time/DatePickers'
 import { createEventSchema, updateEventSchema, EVENT_STATUSES, type EventCreateInput, type EventData } from '@hmi/shared'
 import { apiFetch } from '../../lib/api-client'
 import { formatEventDate } from '../../lib/format-event-date'
-import { fetchAccessibleEvents } from './event-queries'
-import { DetailSkeleton, EventListSkeleton, LoadingLabel } from '../../components/loading/LoadingUi'
+import { DetailSkeleton, LoadingLabel } from '../../components/loading/LoadingUi'
+import { EventPickerTable } from './EventPickerTable'
+import { eventListStatusLabel, getEventListStatus } from './event-picker-utils'
 
 type EventInput = EventCreateInput
-type EventFilter = 'all' | 'draft' | 'published' | 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
 const eventKey = ['events']
-const emptyEvents: EventData['event'][] = []
 const friendlyError = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 const formatDate = (date: string) => formatEventDate(date)
 const formatRange = (event: Pick<EventData['event'], 'startDate' | 'endDate'>) => event.endDate ? `${new Date(event.startDate).toLocaleDateString()} – ${new Date(event.endDate).toLocaleDateString()}` : new Date(event.startDate).toLocaleDateString()
@@ -51,65 +50,14 @@ function clearEventDraft(key: string) {
   try { localStorage.removeItem(key) } catch { /* Storage may be unavailable in private browsing. */ }
 }
 
-function useEvents() {
-  return useQuery({ queryKey: eventKey, queryFn: fetchAccessibleEvents })
-}
-
-function derivedStatus(event: EventData['event']): Exclude<EventFilter, 'all'> {
-  if (event.status !== 'published') return event.status
-  const now = Date.now()
-  const start = new Date(event.startDate).getTime()
-  const end = event.endDate ? new Date(event.endDate).getTime() : start
-  if (now < start) return 'upcoming'
-  if (now <= end) return 'ongoing'
-  return 'completed'
-}
+function derivedStatus(event: EventData['event']) { return getEventListStatus(event) }
 
 export function EventListPage({ admin = false }: { admin?: boolean }) {
-  const events = useEvents()
   const location = useLocation()
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<EventFilter>('all')
-  const [page, setPage] = useState(1)
   const notice = (location.state as { notice?: string } | null)?.notice
   const base = admin ? '/admin/events' : '/events'
-  const records = events.data?.events ?? emptyEvents
-  const filtered = useMemo(() => records.filter((event) => {
-    const matchesSearch = event.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
-    const matchesFilter = filter === 'all' || derivedStatus(event) === filter
-    return matchesSearch && matchesFilter
-  }), [records, search, filter])
-  const pageSize = 10
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const visibleEvents = filtered.slice((page - 1) * pageSize, page * pageSize)
-  return <EventsLayout title="Events" description="Create and manage the events you can access." admin={admin}>
-    <div className="aw-page-heading">
-      <div><p>Keep event details and participant workflows in one place.</p></div>
-      <Link className="aw-button aw-button--primary" to={`${base}/new`}><CirclePlus size={16} /> Create event</Link>
-    </div>
-    {notice && <p className="notice success" role="status">{notice}</p>}
-    <section className="aw-panel" aria-label="Event list">
-      <div className="aw-toolbar aw-events-toolbar">
-        <label className="aw-search"><span className="visually-hidden">Search events</span><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} placeholder="Search events…" /></label>
-        <label className="aw-filter-label">Status <select value={filter} onChange={(event) => { setFilter(event.target.value as EventFilter); setPage(1) }}>
-          <option value="all">All events</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="draft">Drafts</option><option value="cancelled">Cancelled</option>
-        </select></label>
-      </div>
-      {events.isLoading ? <EventListSkeleton />
-        : events.error ? <p className="notice error" role="alert">{friendlyError(events.error)} <button type="button" onClick={() => void events.refetch()}>Retry</button></p>
-          : filtered.length ? <>
-            <div className="aw-table-scroll"><table className="aw-table aw-events-table"><thead><tr><th>Event</th><th>Dates</th><th>Access</th><th>Status</th><th><span className="visually-hidden">Open</span></th></tr></thead><tbody>
-              {visibleEvents.map((event) => <tr key={event.id}>
-                <td><Link className="aw-event-name-link" to={`${base}/${event.id}`}><span className="aw-event-icon"><CalendarDays size={17} /></span><span><strong>{event.name}</strong><small>{event.description || 'No description provided'}</small></span></Link></td>
-                <td>{formatRange(event)}</td><td><span className="aw-access-role">{event.accessRole}</span></td>
-                <td><span className={`aw-status-badge aw-status-${derivedStatus(event)}`}>{derivedStatus(event)}</span></td>
-                <td><Link className="aw-icon-link" to={`${base}/${event.id}`} aria-label={`Open ${event.name}`}><ChevronRight size={17} /></Link></td>
-              </tr>)}
-            </tbody></table></div>
-            <div className="aw-table-footer"><span>Showing {Math.min((page - 1) * pageSize + 1, filtered.length)}–{Math.min(page * pageSize, filtered.length)} of {filtered.length} matching events</span><div><button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>‹</button><span className="aw-page-count">{page} / {pageCount}</span><button type="button" aria-label="Next page" disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)}>›</button></div></div>
-          </> : <div className="aw-empty"><span className="aw-empty-icon"><CalendarDays size={22} /></span><h3>{search || filter !== 'all' ? 'No matching events' : 'No events yet'}</h3><p>{search || filter !== 'all' ? 'Try changing your search or status filter.' : 'Create an event to start managing registrations and certificates.'}</p>{!search && filter === 'all' && <Link className="aw-button aw-button--primary" to={`${base}/new`}>Create event</Link>}</div>}
-    </section>
-  </EventsLayout>
+  const content = <EventPickerTable title="Events" subtitle="Create and manage the events you can access." breadcrumb={admin ? [{ label: 'Dashboard', to: '/admin/dashboard' }, { label: 'Events' }] : []} backTo={admin ? '/admin/dashboard' : undefined} introLine="Keep event details and participant workflows in one place." primaryAction={{ label: 'Create event', href: `${base}/new` }} getRowHref={(event) => `${base}/${event.id}`} notice={notice} />
+  return admin ? content : <EventsLayout title="" admin={false}>{content}</EventsLayout>
 }
 
 export function EventDetailsPage({ admin = false }: { admin?: boolean }) {
@@ -127,7 +75,7 @@ export function EventDetailsPage({ admin = false }: { admin?: boolean }) {
   return <EventsLayout title="" admin={admin}>
     {notice && <p className="notice success" role="status">{notice}</p>}
     <div className="aw-page-heading aw-event-page-heading">
-      <div><div className="aw-event-title-row"><h1>{item.name}</h1><span className={`aw-status-badge aw-status-${derivedStatus(item)}`}>{derivedStatus(item)}</span></div><p><CalendarDays size={14} /> {formatRange(item)} <span className="aw-meta-separator">·</span> <span className="aw-access-role">{item.accessRole} access</span></p></div>
+      <div><div className="aw-event-title-row"><h1>{item.name}</h1><span className={`aw-status-badge aw-status-${derivedStatus(item) === 'live' ? 'ongoing' : derivedStatus(item)}`}>{eventListStatusLabel(derivedStatus(item))}</span></div><p><CalendarDays size={14} /> {formatRange(item)} <span className="aw-meta-separator">·</span> <span className="aw-access-role">{item.accessRole} access</span></p></div>
       {item.accessRole === 'admin' && <Link className="aw-button" to={`${base}/${item.id}/edit`}><PencilLine size={15} /> Edit event</Link>}
     </div>
     <div className="aw-detail-grid">

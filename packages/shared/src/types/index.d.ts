@@ -26,11 +26,15 @@ export type EventDto = {
   createdAt: string
   updatedAt: string
   archivedAt: string | null
-  accessRole: EventMemberRole
+  accessRole: EventMemberRole | null
   /** Non-cancelled registrations, included only for event admins on event lists. */
   participantCount?: number | null
   /** Reserved for a future participant approval workflow. */
   pendingParticipantCount?: number | null
+  /** Registered or attended participants who may receive an event certificate; admin only. */
+  eligibleParticipantCount?: number | null
+  /** Certificates currently in issued status; admin only. */
+  issuedCertificateCount?: number | null
 }
 export type EventData = { event: EventDto }
 export type EventListData = { events: EventDto[] }

@@ -6,7 +6,7 @@ export type EventRecord = {
 }
 
 export interface ParticipantRepository {
-  listDiscoverableEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { accessRole: 'admin' | 'member' | null; participantCount: number | null }>; total: number }>
+  listDiscoverableEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { accessRole: 'admin' | 'member' | null; participantCount: number | null; eligibleParticipantCount?: number | null; issuedCertificateCount?: number | null }>; total: number }>
   findEvent(eventId: string): Promise<EventRecord | undefined>
   listUserEvents(userId: string, input: PageInput): Promise<{ events: Array<EventRecord & { registrationId: string; registrationStatus: string; registeredAt: Date }>; total: number }>
   findRegistration(userId: string, eventId: string): Promise<{ id: string; eventId: string; status: string; registeredAt: Date; updatedAt: Date } | undefined>

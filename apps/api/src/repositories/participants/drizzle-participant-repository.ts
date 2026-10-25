@@ -29,9 +29,16 @@ export class DrizzleParticipantRepository implements ParticipantRepository {
     const registrationCounts = this.db.select({
       eventId: eventRegistrations.eventId,
       participantCount: count().as('participantCount'),
+      eligibleParticipantCount: sql<number>`count(*) filter (where ${eventRegistrations.status} in ('registered', 'attended'))::int`.as('eligibleParticipantCount'),
     }).from(eventRegistrations)
       .where(ne(eventRegistrations.status, 'cancelled'))
       .groupBy(eventRegistrations.eventId).as('registration_counts')
+    const certificateCounts = this.db.select({
+      eventId: certificates.eventId,
+      issuedCertificateCount: count().as('issuedCertificateCount'),
+    }).from(certificates)
+      .where(eq(certificates.status, 'issued'))
+      .groupBy(certificates.eventId).as('issued_certificate_counts')
     const [totalRow] = await this.db.select({ total: count() }).from(events)
       .leftJoin(eventMemberships, and(eq(eventMemberships.eventId, events.id), eq(eventMemberships.userId, userId)))
       .where(where)
@@ -39,9 +46,12 @@ export class DrizzleParticipantRepository implements ParticipantRepository {
       ...eventColumns,
       accessRole: eventMemberships.role,
       participantCount: sql<number | null>`case when ${eventMemberships.role} = 'admin' then coalesce(${registrationCounts.participantCount}, 0) else null end`,
+      eligibleParticipantCount: sql<number | null>`case when ${eventMemberships.role} = 'admin' then coalesce(${registrationCounts.eligibleParticipantCount}, 0) else null end`,
+      issuedCertificateCount: sql<number | null>`case when ${eventMemberships.role} = 'admin' then coalesce(${certificateCounts.issuedCertificateCount}, 0) else null end`,
     }).from(events)
       .leftJoin(eventMemberships, and(eq(eventMemberships.eventId, events.id), eq(eventMemberships.userId, userId)))
       .leftJoin(registrationCounts, eq(registrationCounts.eventId, events.id))
+      .leftJoin(certificateCounts, eq(certificateCounts.eventId, events.id))
       .where(where).orderBy(asc(events.startDate), asc(events.createdAt)).limit(input.pageSize).offset(offset(input))
     return { events: rows, total: totalRow.total }
   }

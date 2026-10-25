@@ -88,6 +88,8 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/features/auth/` | Login, signup, password recovery and reset pages with shared layout and design tokens | Implemented |
 | `apps/web/src/features/errors/` | Independent branded not-found page and illustration for unknown frontend routes | Implemented |
 | `apps/web/src/features/events/events.tsx` | Event list/detail views, two-step create/edit forms, temporary browser draft restore, and TanStack Query operations | Implemented |
+| `apps/web/src/features/events/EventPickerTable.tsx` | Shared event listing UI for Events, Participants, and Certificates, including filters, metrics columns, keyboard navigation, and paging | Implemented |
+| `apps/web/src/features/events/event-picker-utils.ts` | Shared event-picker lifecycle status and date-range formatting | Implemented |
 | `apps/web/src/features/admin/AdminWorkspace.tsx` | Authenticated admin shell, persisted dashboard statistics, upcoming events, and event-scoped navigation | Implemented |
 | `apps/web/src/features/navigation/` | Shared route-aware Back button and breadcrumb components | Implemented |
 | `apps/web/src/features/admin/admin-workspace.css` | Responsive styling for admin workspace pages, tables, forms, and dialogs | Implemented |

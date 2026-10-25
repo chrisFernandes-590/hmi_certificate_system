@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { createApp } from '../src/app.js'
 import type { ParticipantRepository, PageInput, EventRecord, CertificateRecord } from '../src/repositories/participants/participant-repository.js'
 import { ParticipantService } from '../src/services/participants/participant-service.js'
+import type { EventService } from '../src/services/events/event-service.js'
 import type { AuthProvider, AuthSession, AuthUser } from '../src/services/auth/types.js'
 
 const first: AuthUser = { id: '11111111-1111-4111-8111-111111111111', name: 'First', email: 'first@example.com', emailVerifiedAt: new Date() }
@@ -22,7 +23,7 @@ const auth = {
 class MemoryParticipantRepository implements ParticipantRepository {
   registration: { id: string; eventId: string; status: string; registeredAt: Date; updatedAt: Date } | undefined
   ownerId = first.id
-  async listDiscoverableEvents() { return { events: [{ ...event, accessRole: null }], total: 1 } }
+  async listDiscoverableEvents() { return { events: [{ ...event, accessRole: 'admin' as const, participantCount: 6, eligibleParticipantCount: 4, issuedCertificateCount: 3 }], total: 1 } }
   async findEvent() { return event }
   async listUserEvents() { return { events: this.registration ? [{ ...event, registrationId: this.registration.id, registrationStatus: this.registration.status, registeredAt: this.registration.registeredAt }] : [], total: this.registration ? 1 : 0 } }
   async findRegistration(userId: string) { return userId === first.id ? this.registration : undefined }
@@ -46,10 +47,27 @@ class MemoryParticipantRepository implements ParticipantRepository {
 }
 
 const repository = new MemoryParticipantRepository()
-const app = createApp(auth, { webOrigin: 'http://localhost:5173', sessionTtlSeconds: 3600, secureCookies: false }, undefined, new ParticipantService(repository, () => now))
+const app = createApp(auth, { webOrigin: 'http://localhost:5173', sessionTtlSeconds: 3600, secureCookies: false }, {} as EventService, new ParticipantService(repository, () => now))
 const request = (path: string, token?: string, options: RequestInit = {}) => app.request(path, {
   ...options,
   headers: { ...(options.headers ?? {}), ...(token ? { cookie: `titlecert_session=${token}` } : {}) },
+})
+
+test('admin event lists return grouped participant and certificate counts without a pending-approval claim', async () => {
+  const response = await request('/api/events/?page=1&pageSize=10', 'first')
+  assert.equal(response.status, 200)
+  const body = await response.json() as { data: { events: Array<{ participantCount: number | null; pendingParticipantCount: number | null; eligibleParticipantCount: number | null; issuedCertificateCount: number | null }> } }
+  assert.deepEqual({
+    participantCount: body.data.events[0]?.participantCount,
+    pendingParticipantCount: body.data.events[0]?.pendingParticipantCount,
+    eligibleParticipantCount: body.data.events[0]?.eligibleParticipantCount,
+    issuedCertificateCount: body.data.events[0]?.issuedCertificateCount,
+  }, {
+    participantCount: 6,
+    pendingParticipantCount: null,
+    eligibleParticipantCount: 4,
+    issuedCertificateCount: 3,
+  })
 })
 
 test('registration is authenticated, scoped to the user, and duplicate-safe', async () => {

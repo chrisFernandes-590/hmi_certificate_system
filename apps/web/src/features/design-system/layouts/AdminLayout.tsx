@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { BadgeCheck, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Menu, Moon, Sun, Users, X } from 'lucide-react'
 import { useAuth } from '../../../lib/use-auth'
 import { RouteNavigation } from '../../navigation/RouteNavigation'
@@ -13,6 +13,8 @@ const adminNavigation = [
 ]
 
 export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard' }: { children: ReactNode; roleLabel?: string; title?: string }) {
+  const { pathname } = useLocation()
+  const routePath = pathname.replace(/\/+$/, '') || '/'
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [dark, setDark] = useState(() => {
@@ -55,7 +57,7 @@ export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard'
         <h1 className="admin-topbar-title">{title}</h1>
         <div className="admin-topbar-actions"><button className="admin-icon-button admin-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button><button className="admin-create-event" type="button" onClick={() => navigate('/admin/events/new')}>+ Create event</button></div>
       </header>
-      <main className="admin-page-content"><RouteNavigation />{children}</main>
+      <main className="admin-page-content">{!['/admin/events', '/admin/participants', '/admin/certificates'].includes(routePath) && <RouteNavigation />}{children}</main>
     </div>
   </div>
 }

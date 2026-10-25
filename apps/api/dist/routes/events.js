@@ -35,7 +35,15 @@ export async function listEventsResponse(c, events, participants) {
         if (!query.success)
             throw new AppError(400, 'Invalid query parameters', query.error.issues.map(({ path, message }) => ({ field: path.join('.'), message })));
         const result = await participants.listDiscoverableEvents(c.get('authUser').id, query.data);
-        return successResponse(c, { ...result, events: result.events.map(({ accessRole, participantCount, ...event }) => ({ ...toEventDto(event), accessRole, participantCount: accessRole === 'admin' ? participantCount : null, registrationEligible: event.registrationEligible })), page: query.data.page, pageSize: query.data.pageSize });
+        return successResponse(c, { ...result, events: result.events.map(({ accessRole, participantCount, eligibleParticipantCount, issuedCertificateCount, ...event }) => ({
+                ...toEventDto(event), accessRole,
+                participantCount: accessRole === 'admin' ? participantCount : null,
+                // This release has no pending approval registration status yet.
+                pendingParticipantCount: null,
+                eligibleParticipantCount: accessRole === 'admin' ? eligibleParticipantCount ?? null : null,
+                issuedCertificateCount: accessRole === 'admin' ? issuedCertificateCount ?? null : null,
+                registrationEligible: event.registrationEligible,
+            })), page: query.data.page, pageSize: query.data.pageSize });
     }
     const accessibleEvents = await events.listAccessible(c.get('authUser').id);
     return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) });

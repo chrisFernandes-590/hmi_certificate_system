@@ -17,7 +17,7 @@ const EventFormPage = lazy(() => import('../events/events').then((module) => ({ 
 const EventCertificateManagement = lazy(() => import('../certificates/EventCertificateManagement').then((module) => ({ default: module.EventCertificateManagement })))
 const CertificateDetailsPage = lazy(() => import('../certificates/certificates').then((module) => ({ default: module.CertificateDetailsPage })))
 const MyCertificatesPage = lazy(() => import('../certificates/certificates').then((module) => ({ default: module.MyCertificatesPage })))
-const EventPickerPage = lazy(() => import('./EventPickerPage').then((module) => ({ default: module.EventPickerPage })))
+const EventPickerTable = lazy(() => import('../events/EventPickerTable').then((module) => ({ default: module.EventPickerTable })))
 
 type DashboardStats = {
   eventCount: number
@@ -56,16 +56,23 @@ function Stat({ label, value, icon, tone = 'default', note }: { label: string; v
   return <article className="aw-stat"><span className={`aw-stat-icon aw-stat-icon--${tone}`}>{icon}</span><div className="aw-stat-copy"><strong>{typeof value === 'number' ? value.toLocaleString() : value ?? '—'}</strong><span>{label}</span>{note && <small>{note}</small>}</div></article>
 }
 
-function EventChooser({ section }: { section: 'certificates' }) {
-  const events = useQuery({ queryKey: ['events'], queryFn: fetchAccessibleEvents })
-  const label = 'certificate management'
-  if (events.isLoading) return <div role="status" className="aw-loading"><LoadingLabel>Loading events</LoadingLabel></div>
-  if (events.error) return <p className="notice error" role="alert">{friendlyError(events.error)} <button type="button" onClick={() => void events.refetch()}>Retry</button></p>
-  const manageable = events.data?.events.filter((event) => event.accessRole === 'admin') ?? []
-  return <section className="aw-panel"><header className="aw-panel-head"><h2>Select an event for {label}</h2></header>
-    {manageable.length ? <ul className="event-list">{manageable.map((event) => <li key={event.id}><Link to={`/admin/${section}/${event.id}`}><strong>{event.name}</strong><span>{new Date(event.startDate).toLocaleString()}</span></Link></li>)}</ul> : <p>You do not administer any events yet. Create an event to get started.</p>}
-  </section>
-}
+const participantColumns = [{
+  header: 'Participants',
+  className: 'participants-extra-column',
+  render: (event: EventData['event']) => <span className="participants-count"><Users size={14} aria-hidden="true" /><span>{event.participantCount == null ? <span className="event-picker-muted">—</span> : event.participantCount.toLocaleString()}</span>{event.pendingParticipantCount != null && event.pendingParticipantCount > 0 && <span className="event-picker-pending">{event.pendingParticipantCount.toLocaleString()} pending</span>}</span>,
+}]
+
+const certificateColumns = [{
+  header: 'Certificates',
+  className: 'certificates-extra-column',
+  render: (event: EventData['event']) => {
+    const eligible = event.eligibleParticipantCount
+    const issued = event.issuedCertificateCount
+    if (eligible == null || eligible === 0) return <span className="event-picker-muted">—</span>
+    const progress = Math.min(100, ((issued ?? 0) / eligible) * 100)
+    return <span className="event-picker-certificate-count"><span>{issued == null ? '—' : issued.toLocaleString()} / {eligible.toLocaleString()}</span><span className="event-picker-certificate-track" aria-label={`${Math.round(progress)} percent of eligible participants have an issued certificate`}><i style={{ width: `${progress}%` }} /></span></span>
+  },
+}]
 
 function EventManagementPage({ section }: { section: 'participants' | 'certificates' }) {
   const { eventId = '' } = useParams()
@@ -90,9 +97,9 @@ export function AdminWorkspace() {
       <Route path="events/new" element={<EventFormPage mode="create" admin />} />
       <Route path="events/:eventId/edit" element={<EventFormPage mode="edit" admin />} />
       <Route path="events/:eventId" element={<EventDetailsPage admin />} />
-      <Route path="participants" element={<EventPickerPage />} />
+      <Route path="participants" element={<EventPickerTable title="Participants" subtitle="Choose an event to manage its participants, approvals and attendance." breadcrumb={[{ label: 'Dashboard', to: '/admin/dashboard' }, { label: 'Participants' }]} introLine="Review registrations, approve participants and track attendance in one place." extraColumns={participantColumns} emptyState={{ description: 'Create an event to start managing participant registrations and attendance.', primaryAction: { label: 'Create event', href: '/admin/events/new' } }} adminOnly getRowHref={(event) => `/admin/participants/${event.id}`} />} />
       <Route path="participants/:eventId" element={<EventManagementPage section="participants" />} />
-      <Route path="certificates" element={<EventChooser section="certificates" />} />
+      <Route path="certificates" element={<EventPickerTable title="Certificates" subtitle="Choose an event to design templates and issue certificates." breadcrumb={[{ label: 'Dashboard', to: '/admin/dashboard' }, { label: 'Certificates' }]} introLine="Manage templates, eligibility and issued certificates for each event." extraColumns={certificateColumns} emptyState={{ description: 'Create an event to start managing certificate eligibility and issuance.', primaryAction: { label: 'Create event', href: '/admin/events/new' } }} adminOnly getRowHref={(event) => `/admin/certificates/${event.id}`} />} />
       <Route path="certificates/:eventId" element={<EventManagementPage section="certificates" />} />
       <Route path="my-certificates" element={<MyCertificatesPage admin />} />
       <Route path="my-certificates/:certificateId" element={<CertificateDetailsPage admin />} />

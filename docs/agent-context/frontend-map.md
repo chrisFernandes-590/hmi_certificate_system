@@ -15,7 +15,8 @@ session cookie. Cognito is not configured.
 | `src/features/auth/` | Login, registration, recovery, email verification |
 | `src/features/events/events.tsx` | Event list/details and two-step create/edit forms; create drafts restore from browser storage for up to seven days |
 | `src/features/admin/AdminWorkspace.tsx` | Authenticated admin shell, persisted dashboard summary, published upcoming events, and event-scoped participant/certificate navigation |
-| `src/features/admin/EventPickerPage.tsx`, `event-picker.css` | Searchable, sortable, filterable event picker for participant management, with date groups, accessible keyboard navigation, and bounded client pagination |
+| `src/features/events/EventPickerTable.tsx`, `event-picker-table.css` | Shared Events/Participants/Certificates event picker with consistent status/date formatting, debounced search, filters, counts, keyboard navigation, and pagination |
+| `src/features/events/event-picker-utils.ts` | Shared picker date formatting and event lifecycle status mapping |
 | `src/features/admin/admin-workspace.css` | Responsive dashboard, event, certificate, and management page styling. Sidebar styling remains in the design-system layout stylesheet. |
 | `src/features/admin/csv-import.ts`, `src/features/admin/csv-import.worker.ts` | Worker-based local CSV inspection, column mapping, formatting preview, progress callbacks, and a row cap |
 | `src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant search, attendance updates, individual/bulk certificate issue, event certificate search, status/revocation |
