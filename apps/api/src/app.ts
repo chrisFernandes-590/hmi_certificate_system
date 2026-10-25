@@ -18,6 +18,9 @@ import type { CertificateService } from './services/certificates/certificate-ser
 import { createParticipantImportRoutes } from './routes/participant-imports.js'
 import type { ParticipantImportService } from './services/participants/participant-import-service.js'
 import type { PublicUser } from '@hmi/shared'
+import { createProfileRoutes } from './routes/profiles.js'
+import type { ProfileService } from './services/profiles/profile-service.js'
+import { requireProfileType } from './middleware/require-profile.js'
 
 export type AuthAppConfig = {
   webOrigin: string
@@ -50,7 +53,7 @@ function clearSessionCookie(c: Context, config: AuthAppConfig) {
   })
 }
 
-export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService, participantService?: ParticipantService, certificateService?: CertificateService, participantImportService?: ParticipantImportService) {
+export function createApp(auth: AuthProvider, config: AuthAppConfig, eventService?: EventService, participantService?: ParticipantService, certificateService?: CertificateService, participantImportService?: ParticipantImportService, profileService?: ProfileService) {
   const app = new Hono<{ Variables: Variables }>()
   app.onError(apiErrorHandler)
   app.notFound(apiNotFoundHandler)
@@ -102,18 +105,19 @@ export function createApp(auth: AuthProvider, config: AuthAppConfig, eventServic
     return successResponse(c, { message: 'Password updated. Please sign in again.' })
   }))
   app.route('/api/auth', routes)
+  if (profileService) app.route('/api/profiles', createProfileRoutes(auth, profileService, config.webOrigin))
   if (eventService) {
-    app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin, participantService))
+    app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin, participantService, profileService))
     app.get('/api/events/', authRequired, asyncHandler((c) => listEventsResponse(c, eventService, participantService)))
   }
   if (certificateService) {
-    app.route('/api', createCertificateRoutes(auth, certificateService, config.webOrigin))
+    app.route('/api', createCertificateRoutes(auth, certificateService, config.webOrigin, profileService))
   }
   if (participantService) {
-    app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin))
+    app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin, profileService))
   }
   if (participantImportService) {
-    app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin))
+    app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin, profileService))
   }
   return app
 }

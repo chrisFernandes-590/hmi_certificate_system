@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle2, FileSpreadsheet, LoaderCircle, RotateCcw, UploadCloud, Users, X } from 'lucide-react'
-import { ApiError, apiDownload, apiFetch } from '../../lib/api-client'
+import { ApiError, apiDownload, apiFetch, friendlyApiMessage } from '../../lib/api-client'
 import { inspectParticipantCsv, validateParticipantCsvLocally, type CsvColumnMapping, type CsvImportProgress, type CsvInspection, type LocalCsvValidation } from '../admin/csv-import'
+import { Select } from '../../components/ui/Select'
 import './participant-import.css'
 
 type ImportJob = {
@@ -579,48 +580,77 @@ export function ParticipantImportWizard({ eventId, eventName }: { eventId: strin
                 <strong>Map columns</strong>
                 <label>
                   Name
-                  <select value={mapping.name ?? ''} onChange={(event) => changeMapping('name', event.target.value)}>
-                    <option value="">Select a column</option>
-                    {inspection.headers.map((header, index) => (
-                      <option key={`${header}-${index}`} value={index}>{header || `Column ${index + 1}`}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={mapping.name !== undefined ? String(mapping.name) : ''}
+                    onValueChange={(val) => changeMapping('name', val)}
+                    options={[
+                      { value: '', label: 'Select a column' },
+                      ...inspection.headers.map((header, index) => ({
+                        value: String(index),
+                        label: header || `Column ${index + 1}`,
+                      })),
+                    ]}
+                    fullWidth
+                  />
                 </label>
                 <label>
                   Email
-                  <select value={mapping.email ?? ''} onChange={(event) => changeMapping('email', event.target.value)}>
-                    <option value="">Select a column</option>
-                    {inspection.headers.map((header, index) => (
-                      <option key={`${header}-${index}`} value={index}>{header || `Column ${index + 1}`}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={mapping.email !== undefined ? String(mapping.email) : ''}
+                    onValueChange={(val) => changeMapping('email', val)}
+                    options={[
+                      { value: '', label: 'Select a column' },
+                      ...inspection.headers.map((header, index) => ({
+                        value: String(index),
+                        label: header || `Column ${index + 1}`,
+                      })),
+                    ]}
+                    fullWidth
+                  />
                 </label>
                 <label>
                   Phone (optional)
-                  <select value={mapping.phone ?? ''} onChange={(event) => changeMapping('phone', event.target.value)}>
-                    <option value="">Not mapped</option>
-                    {inspection.headers.map((header, index) => (
-                      <option key={`${header}-${index}`} value={index}>{header || `Column ${index + 1}`}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={mapping.phone !== undefined ? String(mapping.phone) : ''}
+                    onValueChange={(val) => changeMapping('phone', val)}
+                    options={[
+                      { value: '', label: 'Not mapped' },
+                      ...inspection.headers.map((header, index) => ({
+                        value: String(index),
+                        label: header || `Column ${index + 1}`,
+                      })),
+                    ]}
+                    fullWidth
+                  />
                 </label>
                 <label>
                   Organization (optional)
-                  <select value={mapping.organization ?? ''} onChange={(event) => changeMapping('organization', event.target.value)}>
-                    <option value="">Not mapped</option>
-                    {inspection.headers.map((header, index) => (
-                      <option key={`${header}-${index}`} value={index}>{header || `Column ${index + 1}`}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={mapping.organization !== undefined ? String(mapping.organization) : ''}
+                    onValueChange={(val) => changeMapping('organization', val)}
+                    options={[
+                      { value: '', label: 'Not mapped' },
+                      ...inspection.headers.map((header, index) => ({
+                        value: String(index),
+                        label: header || `Column ${index + 1}`,
+                      })),
+                    ]}
+                    fullWidth
+                  />
                 </label>
               </div>
 
               <label className="pi-policy">
                 When an existing event participant is found
-                <select value={duplicatePolicy} onChange={(event) => setDuplicatePolicy(event.target.value as 'skip' | 'update')}>
-                  <option value="skip">Skip duplicates (recommended)</option>
-                  <option value="update">Update existing guest details</option>
-                </select>
+                <Select
+                  value={duplicatePolicy}
+                  onValueChange={(val) => setDuplicatePolicy(val as 'skip' | 'update')}
+                  options={[
+                    { value: 'skip', label: 'Skip duplicates (recommended)' },
+                    { value: 'update', label: 'Update existing guest details' },
+                  ]}
+                  fullWidth
+                />
               </label>
 
               {localValidation && (
@@ -1025,14 +1055,21 @@ function uploadCsvDirect(
         } else if (request.status === 413) {
           reject(new ApiError('CSV file exceeds 20 MB size limit.', 413))
         } else {
-          let message = `Storage rejected the upload (${request.status}).`
+          let serverMessage: string | undefined
+          let code: string | undefined
           try {
             const body = JSON.parse(request.responseText)
-            if (body?.error?.message) message = body.error.message
+            if (typeof body?.error?.message === 'string') serverMessage = body.error.message
+            if (typeof body?.error?.code === 'string') code = body.error.code
           } catch {
             /* ignore non-JSON errors */
           }
-          reject(new ApiError(message, request.status))
+          console.error('[Certify API] Upload request failed', {
+            status: request.status,
+            code,
+            message: serverMessage,
+          })
+          reject(new ApiError(friendlyApiMessage(request.status, '/participants/import/upload', code, serverMessage), request.status, undefined, code))
         }
       }
       request.onloadend = () => {

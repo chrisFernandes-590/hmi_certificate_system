@@ -32,6 +32,9 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/src/db/schema.ts` | Drizzle Kit entry-point shim (re-exports schema/index.ts) | Implemented |
 | `apps/api/src/db/schema/users.ts` | `users` table definition + type exports | Implemented |
 | `apps/api/src/db/schema/auth.ts` | Credentials, sessions, one-time tokens, external identity tables | Implemented |
+| `apps/api/src/db/schema/profiles.ts` | Participant and organizer profiles with lifecycle and approval status | Implemented |
+| `apps/api/src/services/profiles/profile-service.ts` | Profile listing, active-profile switching, and organizer profile requests | Implemented |
+| `apps/api/src/routes/profiles.ts` | Authenticated profile endpoints | Implemented |
 | `apps/api/src/db/schema/participants.ts` | `participants` table definition + type exports | Implemented |
 | `apps/api/src/db/schema/participant-import-jobs.ts` | Persistent CSV upload, validation, confirmation, and resume state | Implemented |
 | `apps/api/src/db/schema/events.ts` | `events` table + `event_status` enum | Implemented |
@@ -67,6 +70,8 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/api/drizzle/0002_nasty_anthem.sql` | Event membership, archive field and owner-admin backfill | Implemented |
 | `apps/api/drizzle/0003_certificate_event_recipient_unique.sql` | One certificate per event participant unique index | Implemented |
 | `apps/api/drizzle/0004_participant_import_workflow.sql` | Guest participant profiles and durable CSV import jobs | Implemented |
+| `apps/api/drizzle/0005_user_profiles.sql` | Profile backfill and active profile session state; rollback in matching `.down.sql` | Implemented |
+| `apps/api/drizzle/0006_active_profile_session_repair.sql` | Idempotently restores the active-profile session column and backfills sessions when 0005 was only partly applied | Implemented |
 
 ---
 
@@ -99,6 +104,8 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `apps/web/src/features/certificates/EventCertificateManagement.tsx` | Event-admin participant attendance, individual/bulk issue, certificate search and revoke controls | Implemented |
 | `apps/web/src/features/certificates/certificates.tsx` | Owner certificate list/search/details, authorized preview/download, public verification page | Implemented |
 | `apps/web/src/features/design-system/` | Certify visual tokens, reusable status pill, certificate preview, and layout foundations | Implemented |
+| `apps/web/src/features/design-system/layouts/AccountMenu.tsx` | Shared profile menu and organizer profile creation dialog | Implemented |
+| `apps/web/src/features/participant/ParticipantPages.tsx` | Participant home, event discovery/registration, personal events/certificates, and profile summary | Implemented |
 | `apps/web/src/lib/api-client.ts` | Central client for standard API envelopes and `/api` requests | Implemented |
 | `apps/web/src/lib/auth.tsx` | Session restoration and logout provider | Implemented |
 | `apps/web/src/index.css` | Tailwind v4 imports, shared light/dark semantic tokens, and cross-screen component foundations | Implemented |

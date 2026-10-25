@@ -6,6 +6,7 @@ import {
   passwordResetTokens,
   userCredentials,
   users,
+  profiles,
 } from "../../db/schema.js";
 import type { AccountRecord, AuthRepository, AuthUser, CreatedAccount } from "../../services/auth/types.js";
 
@@ -52,6 +53,7 @@ export class DrizzleAuthRepository implements AuthRepository {
 
       if (inserted) {
         await tx.insert(userCredentials).values({ userId: inserted.id, passwordHash: input.passwordHash });
+        await tx.insert(profiles).values({ userId: inserted.id, type: "participant", displayName: inserted.name, roleLabel: "other" });
         return { user: inserted, created: true };
       }
 
@@ -101,7 +103,9 @@ export class DrizzleAuthRepository implements AuthRepository {
   }
 
   async createSession(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
-    await this.db.insert(authSessions).values({ userId, tokenHash, expiresAt });
+    const [active] = await this.db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.userId, userId), eq(profiles.type, "organizer"), eq(profiles.status, "active"), eq(profiles.approvalStatus, "approved"))).limit(1);
+    const [participant] = active ? [] : await this.db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.userId, userId), eq(profiles.type, "participant"))).limit(1);
+    await this.db.insert(authSessions).values({ userId, tokenHash, expiresAt, activeProfileId: active?.id ?? participant?.id });
   }
 
   async findActiveSession(tokenHash: string, now: Date): Promise<AuthUser | undefined> {

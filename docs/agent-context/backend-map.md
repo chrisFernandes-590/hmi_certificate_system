@@ -13,6 +13,7 @@ testable Hono app and mounts common error handling and route modules.
 | --- | --- | --- |
 | HTTP app | `src/app.ts` | Hono composition, response/error handlers, route registration |
 | Auth | `src/middleware/auth.ts`, `src/services/auth/` | Verified local session via HttpOnly cookie or native bearer mode; Cognito is not configured |
+| Profiles | `src/routes/profiles.ts`, `src/services/profiles/`, `src/db/schema/profiles.ts` | Participant/organizer profiles, session-backed active profile, and configurable organizer approval |
 | Event API | `src/routes/events.ts`, `src/services/events/`, `src/repositories/participants/drizzle-participant-repository.ts` | Event CRUD, membership-scoped authorization, and grouped admin-only participant, eligible-registration, and issued-certificate counts on the event list |
 | Participant API | `src/routes/participants.ts`, `src/services/participants/` | Event discovery/registration, participant admin/attendance, owner certificate metadata |
 | CSV import API | `src/routes/participant-imports.ts`, `src/services/participants/participant-import-service.ts` | Short-lived signed PUT sessions, server-streamed CSV validation, confirm-gated chunk import, retry/cancel/history, and cleanup |

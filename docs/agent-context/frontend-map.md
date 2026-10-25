@@ -23,6 +23,7 @@ session cookie. Cognito is not configured.
 | `src/features/certificates/ParticipantImportWizard.tsx` | Direct-to-private-storage upload, server validation review, explicit confirmation, recovery, import history, and error-report download |
 | `src/features/certificates/certificates.tsx` | Owner certificate listing/search/details, authorized PDF preview/download, public verification page |
 | `src/features/design-system/` | Shared warm-neutral light/dark tokens, status pills, certificate preview, participant layout, and responsive admin navigation |
+| `src/features/participant/` | Participant home and profile switching entry points |
 | `src/features/navigation/` | Shared safe Back links, accessible breadcrumbs, and route metadata with authorized event-name resolution |
 | `src/components/loading/LoadingUi.tsx` | Accessible monochrome spinners, route/data skeletons, and retry-on-reload recovery for failed route chunks |
 | `src/components/date-time/` | Canonical themed DatePicker, DateTimePicker, DateRangePicker and development showcase; see `docs/agent-context/date-time-pickers.md` for value semantics and the migration audit |
@@ -33,6 +34,7 @@ session cookie. Cognito is not configured.
 ## Routes and Authorization
 
 - Successful sign-in and the authenticated `/` route land on `/admin/dashboard`.
+- `/app/*` is the participant workspace; `/admin/*` remains the organizer workspace. Active profile data is loaded from `/api/profiles` and persisted with the server session.
 - `/events/:eventId`: authenticated event detail. Admin-only management controls
   are shown only when API data reports `accessRole: "admin"`; the API remains
   the authorization boundary.

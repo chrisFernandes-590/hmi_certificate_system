@@ -106,6 +106,24 @@ pointing to that test target before running `pnpm test:db`.
 
 ## 4. Application-Layer Validation Required
 
+### User Profiles (Migration 0005)
+
+`profiles` stores a participant profile for every application user and an
+optional organizer profile. The migration backfills participant profiles for
+all existing users and approved organizer profiles for users with event-admin
+membership or event ownership. `auth_sessions.active_profile_id` stores the
+active profile for each server-side session. To roll back this migration, run
+`apps/api/drizzle/0005_user_profiles.down.sql` against the same database before
+removing the migration record.
+
+Organizer profile requests use `ORGANIZER_PROFILE_MODE=instant` by default;
+`requires_approval` creates pending requests. Profile status is separate from
+approval status so suspended/deleted profiles cannot become active.
+
+Migration 0006 repairs deployments where the profile tables were created but
+`auth_sessions.active_profile_id` was missing. It is idempotent and populates
+the active profile for existing sessions.
+
 The following invariants cannot be fully enforced at the DB layer alone:
 
 | Rule | Where to enforce |

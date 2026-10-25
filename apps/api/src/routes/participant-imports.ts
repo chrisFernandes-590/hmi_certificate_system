@@ -6,6 +6,8 @@ import { asyncHandler } from '../middleware/async-handler.js'
 import { createAuthMiddleware, createCsrfMiddleware } from '../middleware/auth.js'
 import type { AuthProvider, AuthUser } from '../services/auth/types.js'
 import { ParticipantImportService, PARTICIPANT_IMPORT_MAX_BYTES } from '../services/participants/participant-import-service.js'
+import type { ProfileService } from '../services/profiles/profile-service.js'
+import { requireProfileType } from '../middleware/require-profile.js'
 
 type Variables = { authUser: AuthUser; authSessionToken: string }
 const uuidSchema = z.uuid()
@@ -41,11 +43,12 @@ function jobDto(job: Awaited<ReturnType<ParticipantImportService['getJob']>>) {
   }
 }
 
-export function createParticipantImportRoutes(auth: AuthProvider, imports: ParticipantImportService, webOrigin: string) {
+export function createParticipantImportRoutes(auth: AuthProvider, imports: ParticipantImportService, webOrigin: string, profiles?: ProfileService) {
   const routes = new Hono<{ Variables: Variables }>()
   const requireAuth = createAuthMiddleware(auth)
+  const requireOrganizer = requireProfileType(profiles, 'organizer')
   const requireCsrf = createCsrfMiddleware(webOrigin)
-  routes.use('*', requireAuth)
+  routes.use('*', requireAuth, requireOrganizer)
 
   routes.post('/events/:eventId/participants/import/upload-url', requireCsrf, asyncHandler(async (c) => {
     const input = await parseBody(c, uploadSchema)

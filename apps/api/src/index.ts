@@ -10,6 +10,7 @@ import { DrizzleEventRepository } from './repositories/events/drizzle-event-repo
 import { EventService } from './services/events/event-service.js'
 import { DrizzleParticipantRepository } from './repositories/participants/drizzle-participant-repository.js'
 import { ParticipantService } from './services/participants/participant-service.js'
+import { ProfileService } from './services/profiles/profile-service.js'
 import { DrizzleCertificateRepository } from './repositories/certificates/drizzle-certificate-repository.js'
 import { CertificateService } from './services/certificates/certificate-service.js'
 import { S3CertificateStorage } from './services/certificates/certificate-storage.js'
@@ -62,6 +63,7 @@ const app = createApp(
   new ParticipantService(new DrizzleParticipantRepository(db)),
   new CertificateService(new DrizzleCertificateRepository(db), certificateStorage, certificateConfig.publicVerifyBaseUrl),
   participantImportService,
+  new ProfileService(db, authConfig.organizerProfileMode),
 )
 
 participantImportService.startWorker()

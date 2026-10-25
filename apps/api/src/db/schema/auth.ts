@@ -7,6 +7,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
+import { profiles } from "./profiles.js";
 
 export const userCredentials = pgTable("user_credentials", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -22,6 +23,7 @@ export const authSessions = pgTable("auth_sessions", {
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  activeProfileId: uuid("active_profile_id").references(() => profiles.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("auth_sessions_user_id_idx").on(table.userId)]);
 

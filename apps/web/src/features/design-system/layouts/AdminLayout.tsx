@@ -1,21 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { BadgeCheck, CalendarDays, ChevronDown, FileBadge, LayoutDashboard, Menu, Moon, Sun, Users, X } from 'lucide-react'
-import { useAuth } from '../../../lib/use-auth'
+import { CalendarDays, FileBadge, LayoutDashboard, Menu, Moon, Sun, Users, X } from 'lucide-react'
 import { RouteNavigation } from '../../navigation/RouteNavigation'
+import { AccountMenu } from './AccountMenu'
 
 const adminNavigation = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/events', label: 'Events', icon: CalendarDays },
   { to: '/admin/participants', label: 'Participants', icon: Users },
   { to: '/admin/certificates', label: 'Certificates', icon: FileBadge },
-  { to: '/admin/my-certificates', label: 'My certificates', icon: BadgeCheck },
 ]
 
 export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard' }: { children: ReactNode; roleLabel?: string; title?: string }) {
   const { pathname } = useLocation()
   const routePath = pathname.replace(/\/+$/, '') || '/'
-  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [dark, setDark] = useState(() => {
     const saved = window.localStorage.getItem('certify-theme')
@@ -45,10 +43,7 @@ export function AdminLayout({ children, roleLabel = 'Admin', title = 'Dashboard'
       <nav aria-label="Administration">
         {adminNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} onClick={() => setMobileNavOpen(false)} className={({ isActive }) => `admin-nav-link${isActive ? ' is-active' : ''}`}><Icon aria-hidden="true" /><span>{label}</span></NavLink>)}
       </nav>
-      <div className="admin-user-block">
-        <div className="admin-user-summary"><span className="account-avatar">{user?.name?.slice(0, 1) ?? 'A'}</span><span><strong>{user?.name ?? 'Administrator'}</strong><small>{roleLabel}</small></span><ChevronDown size={16} aria-hidden="true" /></div>
-        <button type="button" onClick={async () => { await logout(); navigate('/login') }}>Sign out</button>
-      </div>
+      <div className="admin-user-block"><AccountMenu /></div>
     </aside>
     {mobileNavOpen && <button className="admin-nav-backdrop" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <div className="admin-main">

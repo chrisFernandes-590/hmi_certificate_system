@@ -299,6 +299,27 @@ the global error handler.
 
 ## 5. Adding Endpoints
 
+### Profile endpoints
+
+- `GET /api/profiles` returns the signed-in user's profile list and current
+  server-session active profile.
+- `POST /api/profiles/active` accepts `{ "type": "participant" | "organizer" }`;
+  the active profile is stored on the authenticated session and switching is
+  audited.
+- `POST /api/profiles/organizer` creates or returns the user's organizer
+  profile. It requires the organizer terms acknowledgement and returns `202`
+  while approval is pending, otherwise `201`.
+- `PATCH /api/profiles/participant` updates the authenticated user's own
+  participant display name, institution, role, and bio. Issued certificates
+  retain their issuance-time name snapshot.
+- Organizer-only event and certificate management endpoints return `403` with
+  code `PROFILE_MISMATCH` when the authenticated session has a participant
+  profile active. Membership and ownership authorization still applies after
+  the active-profile check.
+- If PostgreSQL reports a missing relation for a required migration, the API
+  returns `503 DATABASE_MIGRATION_REQUIRED` with a safe instruction to apply
+  tracked migrations; it does not expose the SQL or database error details.
+
 Add a route in the relevant `apps/api/src/routes/` module and mount it from
 `apps/api/src/app.ts`. For each endpoint:
 

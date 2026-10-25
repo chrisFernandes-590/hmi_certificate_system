@@ -36,6 +36,20 @@
       "when": 1792829476127,
       "tag": "0004_participant_import_workflow",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792914180524,
+      "tag": "0005_user_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792914180525,
+      "tag": "0006_active_profile_session_repair",
+      "breakpoints": true
     }
   ]
 }

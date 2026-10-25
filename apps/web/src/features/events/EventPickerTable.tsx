@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import type { EventDto } from '@hmi/shared'
 import { fetchAccessibleEvents } from './event-queries'
 import { eventListStatusLabel, formatPickerDateRange, getEventListStatus, type EventListStatus } from './event-picker-utils'
+import { Select, type SelectOption } from '../../components/ui/Select'
 import { BackButton } from '../navigation/BackButton'
 import { Breadcrumbs, type BreadcrumbItem } from '../navigation/Breadcrumbs'
 import './event-picker-table.css'
@@ -30,13 +31,13 @@ type EventPickerTableProps = {
 }
 
 const PAGE_SIZE = 10
-const STATUS_OPTIONS: Array<{ value: 'all' | EventListStatus; label: string }> = [
-  { value: 'all', label: 'All events' },
-  { value: 'draft', label: 'Drafts' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'live', label: 'Ongoing' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+const STATUS_OPTIONS: Array<SelectOption & { value: 'all' | EventListStatus }> = [
+  { value: 'all', label: 'All events', isDividerAfter: true },
+  { value: 'draft', label: 'Drafts', color: 'gray' },
+  { value: 'upcoming', label: 'Upcoming', color: 'green' },
+  { value: 'live', label: 'Ongoing', color: 'yellow' },
+  { value: 'completed', label: 'Completed', color: 'gray' },
+  { value: 'cancelled', label: 'Cancelled', color: 'red' },
 ]
 
 export function EventPickerTable({
@@ -117,7 +118,16 @@ export function EventPickerTable({
     <section className="aw-panel event-picker-panel" aria-label={`${title} event list`}>
       <div className="aw-toolbar event-picker-toolbar">
         <label className="aw-search event-picker-search"><Search size={15} aria-hidden="true" /><span className="visually-hidden">Search events by name or description</span><input ref={inputRef} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} placeholder="Search events…" />{search && <button type="button" aria-label="Clear search" onClick={clearSearch}><X size={14} /></button>}</label>
-        <label className="aw-filter-label">Status <select value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setPage(1) }}>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <Select
+          inlineLabel="Status"
+          value={filter}
+          onValueChange={(value: string) => {
+            setFilter(value as typeof filter)
+            setPage(1)
+          }}
+          options={STATUS_OPTIONS}
+          aria-label="Filter events by status"
+        />
       </div>
       {query.error && query.data && <div className="event-picker-error" role="status"><span>Could not refresh events. {query.error instanceof Error ? query.error.message : 'Try again.'}</span><button className="aw-button" type="button" onClick={() => void query.refetch()}>Retry</button></div>}
       {query.isLoading ? <><div className="aw-table-scroll event-picker-table-scroll" role="status" aria-label="Loading events"><table className="aw-table aw-events-table event-picker-table"><thead><tr><th>Event</th><th>Dates</th><th className="event-picker-access">Access</th>{extraColumns.map((column) => <th className="event-picker-extra" key={column.header}>{column.header}</th>)}<th>Status</th><th><span className="visually-hidden">Open event</span></th></tr></thead><tbody>{Array.from({ length: 5 }, (_, row) => <tr className="event-picker-skeleton-row" key={row}>{Array.from({ length: extraColumns.length + 5 }, (_, column) => <td className={column === 2 ? 'event-picker-access' : column > 2 && column <= 2 + extraColumns.length ? 'event-picker-extra' : ''} key={column}><span className="event-picker-bone" /></td>)}</tr>)}</tbody></table></div><div className="aw-table-footer event-picker-footer" aria-hidden="true"><span className="event-picker-bone event-picker-footer-bone" /><div><span className="event-picker-bone event-picker-page-bone" /></div></div></>

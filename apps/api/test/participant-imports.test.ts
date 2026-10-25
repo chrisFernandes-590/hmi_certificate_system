@@ -32,14 +32,14 @@ class MemoryImportRepository {
   async listJobs() { return this.job ? [this.job] : [] }
   async claimValidation(id: string) { if (id !== jobId || !this.job || this.validationClaimed) return undefined; this.validationClaimed = true; return { ...this.job, status: 'validating' } }
   async findExistingEventParticipants() { return [] }
-  async saveValidationProgress(_id: string, counts: Record<string, any>) { Object.assign(this.job, counts) }
-  async finishValidation(_id: string, counts: Record<string, any>) { Object.assign(this.job, counts, { status: 'validated', validatedAt: date }) }
+  async saveValidationProgress(_id: string, counts: Record<string, any>) { if (this.job) Object.assign(this.job, counts) }
+  async finishValidation(_id: string, counts: Record<string, any>) { if (this.job) Object.assign(this.job, counts, { status: 'validated', validatedAt: date }) }
   async failJob(_id: string, message: string) { if (this.job) Object.assign(this.job, { status: 'failed', errorMessage: message }) }
   async isCancelRequested() { return false }
   async confirm(actorId: string, id: string) { if (actorId !== owner.id || id !== jobId || this.job?.status !== 'validated') throw new Error('not ready for confirmation'); this.job.status = 'queued'; return this.job }
   async claimImport(id: string) { if (id !== jobId || !this.job || this.importClaimed || this.job.status !== 'queued') return undefined; this.importClaimed = true; this.job.status = 'importing'; return { ...this.job } }
-  async applyImportChunk(_id: string, rows: any[]) { this.participantWrites += rows.length; this.job.processedRows += rows.length; this.job.createdCount += rows.length; return { processed: rows.length, created: rows.length, updated: 0, skipped: 0 } }
-  async finishImport() { Object.assign(this.job, { status: 'completed', completedAt: date }) }
+  async applyImportChunk(_id: string, rows: any[]) { this.participantWrites += rows.length; if (this.job) { this.job.processedRows += rows.length; this.job.createdCount += rows.length } return { processed: rows.length, created: rows.length, updated: 0, skipped: 0 } }
+  async finishImport() { if (this.job) Object.assign(this.job, { status: 'completed', completedAt: date }) }
   async cancel(actorId: string, id: string) { if (actorId !== owner.id || id !== jobId || !this.job) return undefined; this.job.cancelRequested = true; this.job.status = 'cancelled'; return this.job }
   async expiredObjects() { return [] }
   async markObjectDeleted() {}
@@ -58,7 +58,10 @@ class MemoryImportStorage implements ParticipantImportStorage {
     return { url: 'https://storage.invalid/presigned', headers: { 'content-type': 'text/csv' }, expiresAt: new Date(date.getTime() + 600_000) }
   }
   async head() { return { fileSizeBytes: this.csv.byteLength, contentType: 'text/csv', checksumSha256: checksum, uploadId: this.currentUploadId ?? jobId } }
-  async *getStream() { yield this.csv }
+  async getStream(): Promise<AsyncIterable<Uint8Array>> {
+    const csv = this.csv
+    return (async function* () { yield csv })()
+  }
   async put() {}
   async putBytes(_key: string, bytes: Uint8Array, _contentType?: string, metadata?: Record<string, string>) {
     this.uploadedBytes = bytes

@@ -18,6 +18,7 @@ export function errorResponse(c: Context, error: AppError) {
   const errorBody = {
     statusCode: error.statusCode,
     message: error.message,
+    ...(error.code === undefined ? {} : { code: error.code }),
     ...(error.details === undefined ? {} : { details: error.details })
   }
 

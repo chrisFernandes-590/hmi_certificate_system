@@ -10,6 +10,8 @@ import type { EventUpdateInput as DatabaseEventUpdateInput } from '../repositori
 import type { AuthProvider, AuthUser } from '../services/auth/types.js'
 import type { EventService } from '../services/events/event-service.js'
 import type { ParticipantService } from '../services/participants/participant-service.js'
+import type { ProfileService } from '../services/profiles/profile-service.js'
+import { requireProfileType } from '../middleware/require-profile.js'
 
 type Variables = { authUser: AuthUser; authSessionToken: string }
 async function parseBody<T extends z.ZodType>(c: Context<{ Variables: Variables }>, schema: T): Promise<z.output<T>> {
@@ -52,21 +54,22 @@ export async function listEventsResponse(c: Context<{ Variables: Variables }>, e
   return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) })
 }
 
-export function createEventRoutes(auth: AuthProvider, events: EventService, webOrigin: string, participants?: ParticipantService) {
+export function createEventRoutes(auth: AuthProvider, events: EventService, webOrigin: string, participants?: ParticipantService, profiles?: ProfileService) {
   const routes = new Hono<{ Variables: Variables }>()
   const requireAuth = createAuthMiddleware(auth)
   const requireCsrf = createCsrfMiddleware(webOrigin)
+  const requireOrganizer = requireProfileType(profiles, 'organizer')
 
   const listEvents = asyncHandler((c: Context<{ Variables: Variables }>) => listEventsResponse(c, events, participants))
 
   routes.get('/', requireAuth, listEvents)
   routes.get('', requireAuth, listEvents)
 
-  routes.get('/admin-dashboard', requireAuth, asyncHandler(async (c) => {
+  routes.get('/admin-dashboard', requireAuth, requireOrganizer, asyncHandler(async (c) => {
     return successResponse(c, await events.getAdminDashboardStats(c.get('authUser').id))
   }))
 
-  routes.post('/', requireAuth, requireCsrf, asyncHandler(async (c) => {
+  routes.post('/', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
     const input = await parseBody(c, createEventSchema) as EventCreateInput
     const event = await events.create(c.get('authUser').id, {
       name: input.name,
@@ -89,7 +92,7 @@ export function createEventRoutes(auth: AuthProvider, events: EventService, webO
     return successResponse(c, { event: { ...toEventDto(eventRecord), accessRole } })
   }))
 
-  routes.patch('/:eventId', requireAuth, requireCsrf, asyncHandler(async (c) => {
+  routes.patch('/:eventId', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
     const input = await parseBody(c, updateEventSchema) as EventUpdateInput
     const databaseInput: DatabaseEventUpdateInput = {
       ...(input.name === undefined ? {} : { name: input.name }),
@@ -102,7 +105,7 @@ export function createEventRoutes(auth: AuthProvider, events: EventService, webO
     return successResponse(c, { event: { ...toEventDto(event), accessRole: 'admin' as const } })
   }))
 
-  routes.delete('/:eventId', requireAuth, requireCsrf, asyncHandler(async (c) => {
+  routes.delete('/:eventId', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
     const event = await events.archiveAsAdmin(c.get('authUser').id, parseEventId(c.req.param('eventId')))
     return successResponse(c, { event: { ...toEventDto(event), accessRole: 'admin' as const } })
   }))

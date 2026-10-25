@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiDownload, apiFetch } from '../../lib/api-client'
 import { RouteNavigation } from '../navigation/RouteNavigation'
 import { CertificateListSkeleton, DetailSkeleton, LoadingLabel } from '../../components/loading/LoadingUi'
+import { Select } from '../../components/ui/Select'
 
 type Certificate = {
   id: string
@@ -54,7 +55,18 @@ export function MyCertificatesPage({ admin = false }: { admin?: boolean }) {
     <header className="aw-page-heading"><div><h1>My certificates</h1><p>Find and download certificates issued to your account.</p></div></header>
     <div className="certificate-toolbar">
       <label className="field">Search certificates<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} placeholder="Certificate number, event, title" /></label>
-      <label className="field">Status<select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }}><option value="">All statuses</option><option value="issued">Issued</option><option value="revoked">Revoked</option><option value="draft">Draft</option></select></label>
+      <Select
+        inlineLabel="Status"
+        value={status}
+        onValueChange={(val) => { setStatus(val); setPage(1) }}
+        options={[
+          { value: '', label: 'All statuses' },
+          { value: 'issued', label: 'Issued', color: 'green' },
+          { value: 'revoked', label: 'Revoked', color: 'red' },
+          { value: 'draft', label: 'Draft', color: 'gray' },
+        ]}
+        aria-label="Filter certificates by status"
+      />
     </div>
     {certificates.isLoading ? <CertificateListSkeleton /> : certificates.error ? <p className="notice error" role="alert">{friendlyError(certificates.error)} <button type="button" onClick={() => void certificates.refetch()}>Retry</button></p> : certificates.data?.certificates.length ? <>
       <p className="notice">{certificates.data.total} certificate{certificates.data.total === 1 ? '' : 's'} found.</p>

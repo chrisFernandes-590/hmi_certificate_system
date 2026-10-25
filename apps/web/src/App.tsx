@@ -8,6 +8,7 @@ import { LoginPage } from './features/auth/pages/LoginPage'
 import { RouteNavigation } from './features/navigation/RouteNavigation'
 import { DatePickerDemo } from './components/date-time/DatePickerDemo'
 import { AuthShellSkeleton, CertificateListSkeleton, DashboardSkeleton, DetailSkeleton, EventListSkeleton, LoadingLabel, RouteErrorBoundary, TableSkeleton } from './components/loading/LoadingUi'
+import { SelectShowcase } from './components/ui/SelectShowcase'
 
 const AdminWorkspace = lazy(() => import('./features/admin/AdminWorkspace').then((module) => ({ default: module.AdminWorkspace })))
 const EventListPage = lazy(() => import('./features/events/events').then((module) => ({ default: module.EventListPage })))
@@ -20,11 +21,26 @@ const SignupPage = lazy(() => import('./features/auth/pages/SignupPage').then((m
 const ForgotPasswordPage = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })))
 const ResetPasswordPage = lazy(() => import('./features/auth/pages/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })))
 const NotFoundPage = lazy(() => import('./features/errors/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
+const ParticipantPage = lazy(() => import('./features/participant/ParticipantPages').then((module) => ({ default: module.ParticipantPage })))
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <AuthShellSkeleton />
   return user ? children : <Navigate to="/login" replace />
+}
+
+function OrganizerProfileGuard() {
+  const { loading, profiles, activeProfile, switchProfile } = useAuth()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (loading) return <AuthShellSkeleton />
+  if (activeProfile?.type === 'organizer' && activeProfile.status === 'active') return <AdminWorkspace />
+  const organizer = profiles.find((profile) => profile.type === 'organizer')
+  return <AuthLayout title="Organizer workspace">
+    {organizer?.approvalStatus === 'pending' ? <p>Your organizer profile is waiting for approval. You can continue using your participant profile while you wait.</p> : organizer?.status === 'suspended' ? <p>Your organizer profile is suspended. Contact support for help.</p> : organizer ? <><p>This page is in your organizer profile. Switch profiles and continue?</p><button disabled={busy} onClick={async () => { setBusy(true); setError(''); try { await switchProfile('organizer') } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not switch profiles.') } finally { setBusy(false) } }}>{busy ? 'Switching…' : 'Switch to organizer profile and continue'}</button></> : <><p>Host events and issue certificates with an organizer profile. Your participant profile stays available.</p><Link to="/app">Go to your participant space to create an organizer profile</Link></>}
+    {error && <p className="notice error" role="alert">{error}</p>}
+    <p><Link to="/app">Return to participant space</Link></p>
+  </AuthLayout>
 }
 
 function AuthLayout({ title, children, footer, navigation = false }: { title: string; children: ReactNode; footer?: ReactNode; navigation?: boolean }) {
@@ -61,7 +77,7 @@ function AccountPage() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, activeProfile } = useAuth()
   const location = useLocation()
   const pathname = location.pathname
   const fallback = pathname.startsWith('/admin/dashboard') ? <DashboardSkeleton />
@@ -72,7 +88,8 @@ function AppRoutes() {
           : <AuthShellSkeleton />
   return <RouteErrorBoundary key={pathname}><Suspense fallback={fallback}><Routes>
     {import.meta.env.DEV && <Route path="/__picker-preview" element={<DatePickerDemo />} />}
-    <Route path="/" element={<Navigate to={user ? '/admin/dashboard' : '/login'} replace />} />
+    {import.meta.env.DEV && <Route path="/__select-showcase" element={<SelectShowcase />} />}
+    <Route path="/" element={<Navigate to={user ? (activeProfile?.type === 'organizer' ? '/admin/dashboard' : '/app') : '/login'} replace />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<SignupPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -81,7 +98,12 @@ function AppRoutes() {
     <Route path="/verify" element={<PublicCertificateVerificationPage />} />
     <Route path="/verify/:token" element={<PublicCertificateVerificationPage />} />
     <Route path="/account" element={<Protected><AccountPage /></Protected>} />
-    <Route path="/admin/*" element={<Protected><AdminWorkspace /></Protected>} />
+    <Route path="/admin/*" element={<Protected><OrganizerProfileGuard /></Protected>} />
+    <Route path="/app" element={<Protected><ParticipantPage /></Protected>} />
+    <Route path="/app/explore" element={<Protected><ParticipantPage section="explore" /></Protected>} />
+    <Route path="/app/events" element={<Protected><ParticipantPage section="events" /></Protected>} />
+    <Route path="/app/certificates" element={<Protected><ParticipantPage section="certificates" /></Protected>} />
+    <Route path="/app/settings" element={<Protected><ParticipantPage section="settings" /></Protected>} />
     <Route path="/certificates" element={<Protected><MyCertificatesPage /></Protected>} />
     <Route path="/certificates/:certificateId" element={<Protected><CertificateDetailsPage /></Protected>} />
     <Route path="/events" element={<Protected><EventListPage /></Protected>} />

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { Plus, X } from 'lucide-react'
 import { ApiError, apiFetch } from '../../lib/api-client'
 import { LoadingLabel, TableSkeleton } from '../../components/loading/LoadingUi'
+import { Select } from '../../components/ui/Select'
 
 const ParticipantImportWizard = lazy(() => import('./ParticipantImportWizard').then((module) => ({ default: module.ParticipantImportWizard })))
 
@@ -146,9 +147,21 @@ export function EventCertificateManagement({ eventId, eventName = 'this event', 
           const eligible = participant.status === 'registered' || participant.status === 'attended'
           return <tr key={participant.participantId}>
             <td>{participant.name}</td><td>{participant.email}</td><td>{[participant.phone, participant.organization].filter(Boolean).join(' · ') || '—'}</td>
-            <td><select aria-label={`Attendance for ${participant.name}`} value={participant.status} disabled={participant.status === 'cancelled' || attendance.isPending} onChange={(event) => attendance.mutate({ participantId: participant.participantId, status: event.target.value as Participant['status'] })}>
-              <option value="registered">Registered</option><option value="attended">Attended</option><option value="absent">Absent</option>{participant.status === 'cancelled' && <option value="cancelled">Cancelled</option>}
-            </select></td>
+            <td>
+              <Select
+                size="sm"
+                aria-label={`Attendance for ${participant.name}`}
+                value={participant.status}
+                disabled={participant.status === 'cancelled' || attendance.isPending}
+                onValueChange={(val) => attendance.mutate({ participantId: participant.participantId, status: val as Participant['status'] })}
+                options={[
+                  { value: 'registered', label: 'Registered', color: 'blue' },
+                  { value: 'attended', label: 'Attended', color: 'green' },
+                  { value: 'absent', label: 'Absent', color: 'yellow' },
+                  ...(participant.status === 'cancelled' ? [{ value: 'cancelled', label: 'Cancelled', color: 'red' as const }] : []),
+                ]}
+              />
+            </td>
             <td>{certificate ? <span className={`status-label status-${certificate.status}`}>{certificate.status}</span> : eligible ? <label className="selection-label"><input type="checkbox" checked={selected.includes(participant.participantId)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, participant.participantId] : current.filter((id) => id !== participant.participantId))} />Select</label> : <span className="muted-text">Not eligible</span>}</td>
             <td>{eligible && !certificate && <button className="button-secondary" type="button" disabled={issueOne.isPending || issueBulk.isPending} onClick={() => issueFor(participant.participantId)}>Issue individually</button>}</td>
           </tr>
@@ -189,8 +202,21 @@ export function EventCertificateManagement({ eventId, eventName = 'this event', 
 
     <section className="manager-section" aria-labelledby="certificates-heading">
       <div className="section-heading"><div><h3 id="certificates-heading">Event certificates</h3><p>Search issued records and review their current status.</p></div>
-        <div className="certificate-toolbar"><label className="search-field">Search<input value={certificateSearch} onChange={(event) => { setCertificateSearch(event.target.value); setCertificatePage(1) }} placeholder="Number, participant, title" /></label>
-          <label className="search-field">Status<select value={certificateStatus} onChange={(event) => { setCertificateStatus(event.target.value); setCertificatePage(1) }}><option value="">All</option><option value="issued">Issued</option><option value="revoked">Revoked</option><option value="draft">Draft</option></select></label></div>
+        <div className="certificate-toolbar">
+          <label className="search-field">Search<input value={certificateSearch} onChange={(event) => { setCertificateSearch(event.target.value); setCertificatePage(1) }} placeholder="Number, participant, title" /></label>
+          <Select
+            inlineLabel="Status"
+            value={certificateStatus}
+            onValueChange={(val) => { setCertificateStatus(val); setCertificatePage(1) }}
+            options={[
+              { value: '', label: 'All' },
+              { value: 'issued', label: 'Issued', color: 'green' },
+              { value: 'revoked', label: 'Revoked', color: 'red' },
+              { value: 'draft', label: 'Draft', color: 'gray' },
+            ]}
+            aria-label="Filter certificates by status"
+          />
+        </div>
       </div>
       {certificates.isLoading ? <TableSkeleton label="Loading certificates" columns={5} /> : certificates.error ? <p className="notice error" role="alert">{friendlyError(certificates.error)} <button type="button" onClick={() => void certificates.refetch()}>Retry</button></p> : certificates.data?.certificates.length ? <div className="table-scroll"><table className="data-table"><thead><tr><th>Recipient</th><th>Certificate</th><th>Issued</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {certificates.data.certificates.map((certificate) => <tr key={certificate.id}><td>{certificate.participantName}</td><td><strong>{certificate.certificateNumber}</strong><span className="table-subtitle">{certificate.title}</span></td><td>{dateLabel(certificate.issuedAt)}</td><td><span className={`status-label status-${certificate.status}`}>{certificate.status}</span></td><td>{certificate.status === 'issued' ? revokeId === certificate.id ? <div className="revoke-form"><input aria-label="Reason for revocation" value={revokeReason} maxLength={500} onChange={(event) => setRevokeReason(event.target.value)} placeholder="Reason (required)" /><button className="danger-link" type="button" disabled={revoke.isPending} onClick={() => submitRevocation(certificate.id)}>Confirm revoke</button><button className="button-secondary" type="button" onClick={() => { setRevokeId(''); setRevokeReason('') }}>Cancel</button></div> : <button className="danger-link" type="button" onClick={() => setRevokeId(certificate.id)}>Revoke</button> : <span className="muted-text">{certificate.status === 'revoked' ? `Revoked ${dateLabel(certificate.revokedAt)}` : 'Pending'}</span>}</td></tr>)}

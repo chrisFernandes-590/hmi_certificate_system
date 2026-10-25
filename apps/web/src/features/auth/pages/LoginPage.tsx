@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loginSchema } from '@hmi/shared'
-import { apiRequest } from '../../../lib/api-client'
+import { apiFetch, apiRequest } from '../../../lib/api-client'
 import { useAuth } from '../../../lib/use-auth'
 import { AuthFeedback } from '../components/AuthFeedback'
 import { AuthField } from '../components/AuthField'
@@ -31,7 +31,9 @@ export function LoginPage() {
     try {
       await apiRequest('/login', { method: 'POST', body: JSON.stringify(parsed.data) })
       await refresh()
-      navigate('/admin/dashboard')
+      const profileState = await apiFetch<{ profiles: Array<{ id: string; type: 'participant' | 'organizer' }>; activeProfileId: string | null }>('/profiles')
+      const activeProfile = profileState.profiles.find((profile) => profile.id === profileState.activeProfileId)
+      navigate(activeProfile?.type === 'organizer' ? '/admin/dashboard' : '/app')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign in. Please try again.')
     } finally {

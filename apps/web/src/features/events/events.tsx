@@ -7,6 +7,7 @@ import { createEventSchema, updateEventSchema, EVENT_STATUSES, type EventCreateI
 import { apiFetch } from '../../lib/api-client'
 import { formatEventDate } from '../../lib/format-event-date'
 import { DetailSkeleton, LoadingLabel } from '../../components/loading/LoadingUi'
+import { Select } from '../../components/ui/Select'
 import { EventPickerTable } from './EventPickerTable'
 import { eventListStatusLabel, getEventListStatus } from './event-picker-utils'
 
@@ -171,7 +172,22 @@ export function EventFormPage({ mode, admin = false }: { mode: 'create' | 'edit'
           <label className="aw-field">Description <span className="aw-optional">Optional</span><textarea name="description" rows={4} maxLength={5000} value={currentDescription} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the event and what participants can expect." /><small>{currentDescription.length}/5000 characters</small></label>
         </> : <>
           <div className="aw-form-grid"><div className="aw-field"><label htmlFor="event-start-date">Start date and time <span className="aw-required">Required</span></label><DateTimePicker id="event-start-date" name="startDate" value={currentStart} onChange={(value) => setStartDate(value)} placeholder="Select start date and time" /></div><div className="aw-field"><label htmlFor="event-end-date">End date and time <span className="aw-optional">Optional</span></label><DateTimePicker id="event-end-date" name="endDate" value={currentEnd} onChange={(value) => setEndDate(value)} placeholder="Select end date and time" /></div></div>
-          <label className="aw-field">Event status<select name="status" value={currentStatus} onChange={(event) => setStatus(event.target.value as EventInput['status'])}>{EVENT_STATUSES.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}</select><small>Choose a status supported by the event workflow.</small></label>
+          <div className="aw-field">
+            <label htmlFor="event-status">Event status</label>
+            <Select
+              id="event-status"
+              name="status"
+              value={currentStatus}
+              onValueChange={(value) => setStatus(value as EventInput['status'])}
+              options={EVENT_STATUSES.map((value) => ({
+                value,
+                label: `${value[0]?.toUpperCase()}${value.slice(1)}`,
+                color: value === 'draft' ? 'gray' : value === 'published' ? 'green' : 'gray',
+              }))}
+              fullWidth
+            />
+            <small>Choose a status supported by the event workflow.</small>
+          </div>
         </>}
         {validation && <p className="notice error" role="alert">{validation}</p>}{mutation.error && <p className="notice error" role="alert">{friendlyError(mutation.error)}</p>}
         <div className="aw-wizard-footer"><Link className="aw-button" onClick={() => { if (!edit) clearEventDraft(draftKey) }} to={edit && item ? `${admin ? '/admin/events' : '/events'}/${item.id}` : admin ? '/admin/events' : '/events'}>Cancel</Link><div className="aw-wizard-actions">{activeStep === 1 && <button className="aw-button" type="button" onClick={() => { setActiveStep(0); setValidation('') }}>Back</button>}<button className="aw-button aw-button--primary" disabled={mutation.isPending} type="submit">{activeStep === 0 ? 'Continue' : mutation.isPending ? <LoadingLabel>Saving</LoadingLabel> : edit ? 'Save changes' : 'Create event'} {activeStep === 0 && <ChevronRight size={15} />}</button></div></div>

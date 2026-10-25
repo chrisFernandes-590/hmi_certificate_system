@@ -8,6 +8,7 @@
 
 export * from "./users.js";
 export * from "./auth.js";
+export * from "./profiles.js";
 export * from "./participants.js";
 export * from "./events.js";
 export * from "./event-memberships.js";
