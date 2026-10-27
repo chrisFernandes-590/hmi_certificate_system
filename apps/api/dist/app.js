@@ -12,6 +12,8 @@ import { createEventRoutes, listEventsResponse } from './routes/events.js';
 import { createParticipantRoutes } from './routes/participants.js';
 import { createCertificateRoutes } from './routes/certificates.js';
 import { createParticipantImportRoutes } from './routes/participant-imports.js';
+import { createProfileRoutes } from './routes/profiles.js';
+import { requireProfileType } from './middleware/require-profile.js';
 async function parseBody(c, schema) {
     let body;
     try {
@@ -37,7 +39,7 @@ function clearSessionCookie(c, config) {
         secure: config.secureCookies,
     });
 }
-export function createApp(auth, config, eventService, participantService, certificateService, participantImportService) {
+export function createApp(auth, config, eventService, participantService, certificateService, participantImportService, profileService) {
     const app = new Hono();
     app.onError(apiErrorHandler);
     app.notFound(apiNotFoundHandler);
@@ -88,18 +90,20 @@ export function createApp(auth, config, eventService, participantService, certif
         return successResponse(c, { message: 'Password updated. Please sign in again.' });
     }));
     app.route('/api/auth', routes);
+    if (profileService)
+        app.route('/api/profiles', createProfileRoutes(auth, profileService, config.webOrigin));
     if (eventService) {
-        app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin, participantService));
+        app.route('/api/events', createEventRoutes(auth, eventService, config.webOrigin, participantService, profileService));
         app.get('/api/events/', authRequired, asyncHandler((c) => listEventsResponse(c, eventService, participantService)));
     }
     if (certificateService) {
-        app.route('/api', createCertificateRoutes(auth, certificateService, config.webOrigin));
+        app.route('/api', createCertificateRoutes(auth, certificateService, config.webOrigin, profileService));
     }
     if (participantService) {
-        app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin));
+        app.route('/api', createParticipantRoutes(auth, participantService, config.webOrigin, profileService));
     }
     if (participantImportService) {
-        app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin));
+        app.route('/api', createParticipantImportRoutes(auth, participantImportService, config.webOrigin, profileService));
     }
     return app;
 }

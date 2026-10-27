@@ -5,6 +5,7 @@ import { AppError } from '../errors/app-error.js';
 import { successResponse } from '../lib/api-response.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { createAuthMiddleware, createCsrfMiddleware } from '../middleware/auth.js';
+import { requireProfileType } from '../middleware/require-profile.js';
 async function parseBody(c, schema) {
     let body;
     try {
@@ -48,17 +49,18 @@ export async function listEventsResponse(c, events, participants) {
     const accessibleEvents = await events.listAccessible(c.get('authUser').id);
     return successResponse(c, { events: accessibleEvents.map(({ accessRole, ...event }) => ({ ...toEventDto(event), accessRole })) });
 }
-export function createEventRoutes(auth, events, webOrigin, participants) {
+export function createEventRoutes(auth, events, webOrigin, participants, profiles) {
     const routes = new Hono();
     const requireAuth = createAuthMiddleware(auth);
     const requireCsrf = createCsrfMiddleware(webOrigin);
+    const requireOrganizer = requireProfileType(profiles, 'organizer');
     const listEvents = asyncHandler((c) => listEventsResponse(c, events, participants));
     routes.get('/', requireAuth, listEvents);
     routes.get('', requireAuth, listEvents);
-    routes.get('/admin-dashboard', requireAuth, asyncHandler(async (c) => {
+    routes.get('/admin-dashboard', requireAuth, requireOrganizer, asyncHandler(async (c) => {
         return successResponse(c, await events.getAdminDashboardStats(c.get('authUser').id));
     }));
-    routes.post('/', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.post('/', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, createEventSchema);
         const event = await events.create(c.get('authUser').id, {
             name: input.name,
@@ -79,7 +81,7 @@ export function createEventRoutes(auth, events, webOrigin, participants) {
         const { accessRole, ...eventRecord } = event;
         return successResponse(c, { event: { ...toEventDto(eventRecord), accessRole } });
     }));
-    routes.patch('/:eventId', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.patch('/:eventId', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, updateEventSchema);
         const databaseInput = {
             ...(input.name === undefined ? {} : { name: input.name }),
@@ -91,7 +93,7 @@ export function createEventRoutes(auth, events, webOrigin, participants) {
         const event = await events.updateAsAdmin(c.get('authUser').id, parseEventId(c.req.param('eventId')), databaseInput);
         return successResponse(c, { event: { ...toEventDto(event), accessRole: 'admin' } });
     }));
-    routes.delete('/:eventId', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.delete('/:eventId', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const event = await events.archiveAsAdmin(c.get('authUser').id, parseEventId(c.req.param('eventId')));
         return successResponse(c, { event: { ...toEventDto(event), accessRole: 'admin' } });
     }));

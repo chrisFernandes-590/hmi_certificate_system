@@ -9,6 +9,7 @@ export function errorResponse(c, error) {
     const errorBody = {
         statusCode: error.statusCode,
         message: error.message,
+        ...(error.code === undefined ? {} : { code: error.code }),
         ...(error.details === undefined ? {} : { details: error.details })
     };
     return c.json({ success: false, error: errorBody }, error.statusCode);

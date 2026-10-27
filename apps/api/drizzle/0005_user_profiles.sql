@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS "profiles" (
 CREATE UNIQUE INDEX IF NOT EXISTS "profiles_user_type_uidx" ON "profiles" USING btree ("user_id", "type");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "profiles_user_id_idx" ON "profiles" USING btree ("user_id");--> statement-breakpoint
 INSERT INTO "profiles" ("user_id", "type", "display_name", "role_label")
-SELECT "id", 'participant', "name", 'other' FROM "users"
+SELECT "id", 'participant'::"profile_type", "name", 'other'::"profile_role_label" FROM "users"
 ON CONFLICT ("user_id", "type") DO NOTHING;--> statement-breakpoint
 INSERT INTO "profiles" ("user_id", "type", "display_name", "role_label", "approval_status")
-SELECT DISTINCT u."id", 'organizer', u."name", 'other', 'approved'
+SELECT DISTINCT u."id", 'organizer'::"profile_type", u."name", 'other'::"profile_role_label", 'approved'::"organizer_approval_status"
 FROM "users" u
 WHERE EXISTS (SELECT 1 FROM "event_memberships" m WHERE m."user_id" = u."id" AND m."role" = 'admin')
    OR EXISTS (SELECT 1 FROM "events" e WHERE e."owner_id" = u."id")

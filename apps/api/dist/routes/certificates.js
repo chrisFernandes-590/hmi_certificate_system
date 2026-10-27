@@ -4,6 +4,7 @@ import { AppError } from '../errors/app-error.js';
 import { successResponse } from '../lib/api-response.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { createAuthMiddleware, createCsrfMiddleware } from '../middleware/auth.js';
+import { requireProfileType } from '../middleware/require-profile.js';
 const idSchema = z.uuid();
 const issueSchema = z.object({
     participantId: idSchema,
@@ -43,27 +44,28 @@ function parseUuid(value, label) {
         throw new AppError(400, `${label} must be a valid UUID`);
     return parsed.data;
 }
-export function createCertificateRoutes(auth, certificates, webOrigin) {
+export function createCertificateRoutes(auth, certificates, webOrigin, profiles) {
     const routes = new Hono();
     const requireAuth = createAuthMiddleware(auth);
     const requireCsrf = createCsrfMiddleware(webOrigin);
+    const requireOrganizer = requireProfileType(profiles, 'organizer');
     routes.get('/verify/:token', asyncHandler(async (c) => {
         const token = verificationTokenSchema.safeParse(c.req.param('token'));
         if (!token.success)
             return successResponse(c, { result: 'not_found', valid: false });
         return successResponse(c, await certificates.verify(token.data));
     }));
-    routes.post('/events/:eventId/certificates', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.post('/events/:eventId/certificates', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, issueSchema);
         const certificate = await certificates.issue({ id: c.get('authUser').id, name: c.get('authUser').name }, parseUuid(c.req.param('eventId'), 'Event ID'), input);
         return successResponse(c, { certificate }, 201);
     }));
-    routes.post('/events/:eventId/certificates/bulk', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.post('/events/:eventId/certificates/bulk', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, bulkIssueSchema);
         const result = await certificates.issueBulk({ id: c.get('authUser').id, name: c.get('authUser').name }, parseUuid(c.req.param('eventId'), 'Event ID'), input);
         return successResponse(c, result);
     }));
-    routes.get('/events/:eventId/certificates', requireAuth, asyncHandler(async (c) => {
+    routes.get('/events/:eventId/certificates', requireAuth, requireOrganizer, asyncHandler(async (c) => {
         const query = certificateListQuerySchema.safeParse(c.req.query());
         if (!query.success)
             throw new AppError(400, 'Invalid query parameters', query.error.issues.map(({ path, message }) => ({ field: path.join('.'), message })));
@@ -83,7 +85,7 @@ export function createCertificateRoutes(auth, certificates, webOrigin) {
             'x-content-type-options': 'nosniff',
         });
     }));
-    routes.patch('/certificates/:certificateId/revoke', requireAuth, requireCsrf, asyncHandler(async (c) => {
+    routes.patch('/certificates/:certificateId/revoke', requireAuth, requireOrganizer, requireCsrf, asyncHandler(async (c) => {
         const { reason } = await parseBody(c, revokeSchema);
         const result = await certificates.revoke(c.get('authUser').id, parseUuid(c.req.param('certificateId'), 'Certificate ID'), reason);
         return successResponse(c, { certificate: result });

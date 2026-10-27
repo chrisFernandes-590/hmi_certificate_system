@@ -8,6 +8,7 @@ const environmentSchema = z.object({
     AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(2_592_000).default(604_800),
     AUTH_VERIFICATION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(86_400),
     AUTH_PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400).default(3_600),
+    ORGANIZER_PROFILE_MODE: z.enum(["instant", "requires_approval"]).default("instant"),
     DEV_EMAIL_ENABLED: z.enum(["true", "false"]).default("false"),
     AWS_REGION: z.string().trim().min(1).optional(),
     AWS_ENDPOINT_URL_S3: z.string().url().optional(),
@@ -40,6 +41,7 @@ export const authConfig = {
     sessionTtlSeconds: result.data.AUTH_SESSION_TTL_SECONDS,
     verificationTtlSeconds: result.data.AUTH_VERIFICATION_TTL_SECONDS,
     passwordResetTtlSeconds: result.data.AUTH_PASSWORD_RESET_TTL_SECONDS,
+    organizerProfileMode: result.data.ORGANIZER_PROFILE_MODE,
     devEmailEnabled: result.data.DEV_EMAIL_ENABLED === "true",
     secureCookies: process.env.NODE_ENV === "production",
 };

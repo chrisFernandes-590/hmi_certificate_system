@@ -1,5 +1,5 @@
 import { and, eq, gt, isNotNull, isNull } from "drizzle-orm";
-import { authSessions, emailVerificationTokens, passwordResetTokens, userCredentials, users, } from "../../db/schema.js";
+import { authSessions, emailVerificationTokens, passwordResetTokens, userCredentials, users, profiles, } from "../../db/schema.js";
 const userColumns = {
     id: users.id,
     name: users.name,
@@ -40,6 +40,7 @@ export class DrizzleAuthRepository {
                 .returning(userColumns);
             if (inserted) {
                 await tx.insert(userCredentials).values({ userId: inserted.id, passwordHash: input.passwordHash });
+                await tx.insert(profiles).values({ userId: inserted.id, type: "participant", displayName: inserted.name, roleLabel: "other" });
                 return { user: inserted, created: true };
             }
             const [existing] = await tx
@@ -79,7 +80,9 @@ export class DrizzleAuthRepository {
         });
     }
     async createSession(userId, tokenHash, expiresAt) {
-        await this.db.insert(authSessions).values({ userId, tokenHash, expiresAt });
+        const [active] = await this.db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.userId, userId), eq(profiles.type, "organizer"), eq(profiles.status, "active"), eq(profiles.approvalStatus, "approved"))).limit(1);
+        const [participant] = active ? [] : await this.db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.userId, userId), eq(profiles.type, "participant"))).limit(1);
+        await this.db.insert(authSessions).values({ userId, tokenHash, expiresAt, activeProfileId: active?.id ?? participant?.id });
     }
     async findActiveSession(tokenHash, now) {
         const [user] = await this.db

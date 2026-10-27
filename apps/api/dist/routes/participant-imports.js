@@ -5,6 +5,7 @@ import { successResponse } from '../lib/api-response.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { createAuthMiddleware, createCsrfMiddleware } from '../middleware/auth.js';
 import { ParticipantImportService, PARTICIPANT_IMPORT_MAX_BYTES } from '../services/participants/participant-import-service.js';
+import { requireProfileType } from '../middleware/require-profile.js';
 const uuidSchema = z.uuid();
 const uploadSchema = z.object({ fileName: z.string().trim().min(1).max(255), contentType: z.string().trim().min(1).max(100), fileSizeBytes: z.number().int().min(1), checksumSha256: z.string().regex(/^[A-Za-z0-9+/]{43}=$/) }).strict();
 const mappingSchema = z.object({ name: z.number().int().min(0).max(99), email: z.number().int().min(0).max(99), phone: z.number().int().min(0).max(99).optional(), organization: z.number().int().min(0).max(99).optional() }).strict();
@@ -41,11 +42,12 @@ function jobDto(job) {
         createdAt: job.createdAt.toISOString(), updatedAt: job.updatedAt.toISOString(),
     };
 }
-export function createParticipantImportRoutes(auth, imports, webOrigin) {
+export function createParticipantImportRoutes(auth, imports, webOrigin, profiles) {
     const routes = new Hono();
     const requireAuth = createAuthMiddleware(auth);
+    const requireOrganizer = requireProfileType(profiles, 'organizer');
     const requireCsrf = createCsrfMiddleware(webOrigin);
-    routes.use('*', requireAuth);
+    routes.use('*', requireAuth, requireOrganizer);
     routes.post('/events/:eventId/participants/import/upload-url', requireCsrf, asyncHandler(async (c) => {
         const input = await parseBody(c, uploadSchema);
         return successResponse(c, await imports.createUpload(c.get('authUser').id, parseUuid(c.req.param('eventId'), 'Event ID'), input), 201);
