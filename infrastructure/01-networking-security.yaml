@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'HMI Certificate System - API Security Group Ingress Rules (Phase 3)'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: 'vpc-04aab780a5aa62ac1'
+    Description: 'Existing VPC ID for HMI Certificate System'
+
+  ApiSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: 'sg-020819c796ff23596'
+    Description: 'Existing Security Group ID for the API server (hmi-cert-api-sg)'
+
+  ApiPort:
+    Type: Number
+    Default: 3000
+    Description: 'TCP port on which Hono backend listens'
+
+Resources:
+  # Ingress rule for API traffic (port 3000)
+  ApiSecurityGroupIngressAppPort:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApiSecurityGroupId
+      IpProtocol: tcp
+      FromPort: !Ref ApiPort
+      ToPort: !Ref ApiPort
+      CidrIp: '0.0.0.0/0'
+      Description: 'Allow inbound HTTP API traffic from web clients'
+
+  # Ingress rule for standard HTTP (port 80)
+  ApiSecurityGroupIngressHttp80:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApiSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: '0.0.0.0/0'
+      Description: 'Allow inbound HTTP traffic on port 80'
+
+  # Ingress rule for standard HTTPS (port 443)
+  ApiSecurityGroupIngressHttps443:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApiSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+      Description: 'Allow inbound HTTPS traffic on port 443'
+
+Outputs:
+  ApiSecurityGroupId:
+    Description: 'API Security Group ID'
+    Value: !Ref ApiSecurityGroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiSecurityGroupId'

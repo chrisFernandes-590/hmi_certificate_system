@@ -2,17 +2,37 @@ import { getCookie } from 'hono/cookie'
 import type { MiddlewareHandler } from 'hono'
 import { AppError } from '../errors/app-error.js'
 import type { AuthProvider, AuthUser } from '../services/auth/types.js'
+import type { TokenVerifier } from '../services/auth/cognito-token-verifier.js'
+import type { ExternalIdentityService } from '../services/auth/external-identity-service.js'
 
 type AuthVariables = { authUser: AuthUser; authSessionToken: string }
 
-export function createAuthMiddleware(provider: AuthProvider): MiddlewareHandler<{ Variables: AuthVariables }> {
+export function createAuthMiddleware(
+  provider: AuthProvider,
+  cognitoVerifier?: TokenVerifier,
+  identityService?: ExternalIdentityService,
+): MiddlewareHandler<{ Variables: AuthVariables }> {
   return async (c, next) => {
-    const native = c.req.header('x-auth-client') === 'native'
-    const authorization = native ? c.req.header('authorization') : undefined
+    const authorization = c.req.header('authorization')
     const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
-    const token = native ? bearer : getCookie(c, 'titlecert_session') ?? getCookie(c, '__Host-titlecert_session')
+    const native = c.req.header('x-auth-client') === 'native'
+    const token = bearer ?? (native ? undefined : getCookie(c, 'titlecert_session') ?? getCookie(c, '__Host-titlecert_session'))
     if (!token) throw new AppError(401, 'Authentication required')
 
+    // 1. Check if token is a Cognito JWT
+    if (cognitoVerifier && identityService && token.split('.').length === 3) {
+      const claims = await cognitoVerifier.verify(token)
+      if (claims) {
+        const user = await identityService.resolveUserFromClaims(claims)
+        if (user) {
+          c.set('authUser', user)
+          c.set('authSessionToken', token)
+          return next()
+        }
+      }
+    }
+
+    // 2. Fall back to local session store
     const user = await provider.getSession(token)
     if (!user) throw new AppError(401, 'Session is invalid or expired')
     c.set('authUser', user)
@@ -23,7 +43,7 @@ export function createAuthMiddleware(provider: AuthProvider): MiddlewareHandler<
 
 export function createCsrfMiddleware(webOrigin: string): MiddlewareHandler {
   return async (c, next) => {
-    if (c.req.header('x-auth-client') === 'native') return next()
+    if (c.req.header('x-auth-client') === 'native' || c.req.header('authorization')?.startsWith('Bearer ')) return next()
     const origin = c.req.header('origin')
     let originMatches = false
     try { originMatches = new URL(origin ?? '').origin === webOrigin } catch { /* malformed origins are rejected */ }

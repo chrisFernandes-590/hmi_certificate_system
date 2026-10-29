@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'HMI Certificate System - CloudWatch Log Groups, Metric Alarms, and SNS Notifications'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  Ec2InstanceId:
+    Type: String
+    Description: 'EC2 Instance ID to monitor (from EC2 stack output)'
+
+  RdsInstanceIdentifier:
+    Type: String
+    Default: 'hmi-cert-postgres'
+    Description: 'RDS PostgreSQL DB Instance Identifier to monitor'
+
+  NotificationEmail:
+    Type: String
+    Default: ''
+    Description: 'Optional email address for operational alerts and alarm notifications'
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+
+Resources:
+  # CloudWatch Log Group for API logs
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: '/aws/hmi-cert/api'
+      RetentionInDays: 14
+
+  # SNS Topic for operational alerts
+  OperationalAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'hmi-cert-operational-alerts-${EnvironmentName}'
+      DisplayName: 'HMI Certificate System Alerts'
+
+  # SNS Email Subscription (conditional)
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref OperationalAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # EC2 Status Check Alarm
+  Ec2StatusCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'hmi-cert-ec2-status-check-failed-${EnvironmentName}'
+      AlarmDescription: 'Triggers when EC2 instance status check fails for 2 consecutive minutes'
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref Ec2InstanceId
+      AlarmActions:
+        - !Ref OperationalAlertsTopic
+
+  # RDS High CPU Utilization Alarm
+  RdsHighCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'hmi-cert-rds-high-cpu-${EnvironmentName}'
+      AlarmDescription: 'Triggers when RDS PostgreSQL CPU utilization exceeds 80% for 5 minutes'
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RdsInstanceIdentifier
+      AlarmActions:
+        - !Ref OperationalAlertsTopic
+
+  # RDS Low Free Storage Space Alarm
+  RdsLowFreeStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'hmi-cert-rds-low-storage-${EnvironmentName}'
+      AlarmDescription: 'Triggers when RDS PostgreSQL free storage space falls below 2 GB'
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2147483648 # 2 GB in bytes
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RdsInstanceIdentifier
+      AlarmActions:
+        - !Ref OperationalAlertsTopic
+
+Outputs:
+  LogGroupArn:
+    Description: 'CloudWatch Log Group ARN'
+    Value: !GetAtt ApiLogGroup.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LogGroupArn'
+
+  AlertsTopicArn:
+    Description: 'SNS Alerts Topic ARN'
+    Value: !Ref OperationalAlertsTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlertsTopicArn'

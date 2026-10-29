@@ -16,6 +16,8 @@ const environmentSchema = z.object({
   CERTIFICATE_S3_BUCKET: z.string().trim().min(3).optional(),
   PARTICIPANT_IMPORT_S3_BUCKET: z.string().trim().min(3).optional(),
   CERTIFICATE_PUBLIC_VERIFY_BASE_URL: z.string().url().optional(),
+  COGNITO_USER_POOL_ID: z.string().trim().min(1).optional(),
+  COGNITO_CLIENT_ID: z.string().trim().min(1).optional(),
 });
 
 const result = environmentSchema.safeParse(process.env);
@@ -62,4 +64,10 @@ export const participantImportConfig = {
   awsRegion: result.data.AWS_REGION,
   s3Endpoint: result.data.AWS_ENDPOINT_URL_S3,
   bucket: result.data.PARTICIPANT_IMPORT_S3_BUCKET ?? result.data.CERTIFICATE_S3_BUCKET,
+};
+
+export const cognitoConfig = {
+  userPoolId: result.data.COGNITO_USER_POOL_ID,
+  clientId: result.data.COGNITO_CLIENT_ID,
+  awsRegion: result.data.AWS_REGION,
 };

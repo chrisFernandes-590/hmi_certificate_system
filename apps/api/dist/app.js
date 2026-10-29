@@ -48,6 +48,8 @@ export function createApp(auth, config, eventService, participantService, certif
     const recoveryLimit = createRateLimiter({ limit: 8, windowMs: 15 * 60_000 });
     const loginLimit = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
     app.get('/', asyncHandler((c) => successResponse(c, { message: 'Hello Hono!' })));
+    app.get('/health', asyncHandler((c) => successResponse(c, { status: 'healthy', timestamp: new Date().toISOString() })));
+    app.get('/api/health', asyncHandler((c) => successResponse(c, { status: 'healthy', timestamp: new Date().toISOString() })));
     const routes = new Hono();
     routes.post('/register', csrf, recoveryLimit, asyncHandler(async (c) => {
         const input = await parseBody(c, registerSchema);

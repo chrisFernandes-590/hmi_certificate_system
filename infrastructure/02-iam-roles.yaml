@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'HMI Certificate System - Least-Privilege IAM Role and Instance Profile for EC2'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: 'prod'
+    AllowedValues: ['dev', 'staging', 'prod']
+    Description: 'Deployment environment'
+
+  CertificateBucketName:
+    Type: String
+    Default: 'hmi-cert-pdfs-212641463846-ap-south-1'
+    Description: 'Target S3 bucket name for certificate PDFs and participant imports'
+
+Resources:
+  HmiApiInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'hmi-cert-api-instance-role-${EnvironmentName}'
+      Description: 'Least-privilege role for HMI Certificate API EC2 instance'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        # AWS Systems Manager Session Manager (keyless access, no SSH key or port 22 needed)
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        # CloudWatch Agent for metrics and structured log streaming
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        # S3 Least Privilege Access for Certificates and Participant Imports
+        - PolicyName: HmiApiS3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowListBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub 'arn:aws:s3:::${CertificateBucketName}'
+              - Sid: AllowCertificateObjectOperations
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${CertificateBucketName}/certificate-pdfs/*'
+                  - !Sub 'arn:aws:s3:::${CertificateBucketName}/participant-imports/*'
+        # Parameter Store Read Access
+        - PolicyName: HmiApiSSMParametersPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowGetAppParameters
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:GetParametersByPath
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hmi-cert/*'
+
+  HmiApiInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub 'hmi-cert-api-instance-profile-${EnvironmentName}'
+      Roles:
+        - !Ref HmiApiInstanceRole
+
+Outputs:
+  InstanceRoleArn:
+    Description: 'ARN of the EC2 Instance IAM Role'
+    Value: !GetAtt HmiApiInstanceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceRoleArn'
+
+  InstanceProfileArn:
+    Description: 'ARN of the EC2 Instance Profile'
+    Value: !GetAtt HmiApiInstanceProfile.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceProfileArn'
+
+  InstanceProfileName:
+    Description: 'Name of the EC2 Instance Profile'
+    Value: !Ref HmiApiInstanceProfile
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceProfileName'

@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'HMI Certificate System - EC2 Application Server for Hono Backend (Phase 3 & 5)'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: 'vpc-04aab780a5aa62ac1'
+    Description: 'Existing VPC ID'
+
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Default: 'subnet-0f0078eb008458a23'
+    Description: 'Public Subnet 2 (ap-south-1b) for API server hosting'
+
+  ApiSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: 'sg-020819c796ff23596'
+    Description: 'Security Group for the API Server (hmi-cert-api-sg)'
+
+  InstanceProfileName:
+    Type: String
+    Default: 'hmi-cert-api-instance-profile-prod'
+    Description: 'IAM Instance Profile Name created by the IAM stack'
+
+  InstanceType:
+    Type: String
+    Default: 't4g.small'
+    AllowedValues: ['t4g.micro', 't4g.small', 't4g.medium', 't3.micro', 't3.small']
+    Description: 'EC2 Instance Type (Graviton t4g.small recommended)'
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64'
+    Description: 'SSM parameter dynamically resolving latest Amazon Linux 2023 ARM64 AMI'
+
+Resources:
+  ApiServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref InstanceProfileName
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnetId
+          GroupSet:
+            - !Ref ApiSecurityGroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 10
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+          echo "Starting HMI API Server setup..."
+
+          # Update system packages
+          dnf update -y
+
+          # Install Node.js, git, and CloudWatch agent
+          dnf install -y --allowerasing git nodejs npm amazon-cloudwatch-agent
+          npm install -g pnpm pm2
+
+          echo "Node version: $(node -v)"
+          echo "NPM version: $(npm -v)"
+          echo "pnpm version: $(pnpm -v)"
+
+          # Prepare application directory
+          mkdir -p /opt/hmi-cert/apps/api
+          chown -R ec2-user:ec2-user /opt/hmi-cert
+
+          # Configure CloudWatch Agent for API log streaming
+          cat << 'EOF' > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/user-data.log",
+                      "log_group_name": "/aws/hmi-cert/api",
+                      "log_stream_name": "{instance_id}/user-data",
+                      "timestamp_format": "%b %d %H:%M:%S"
+                    },
+                    {
+                      "file_path": "/opt/hmi-cert/api.log",
+                      "log_group_name": "/aws/hmi-cert/api",
+                      "log_stream_name": "{instance_id}/application"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          EOF
+
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+            -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true
+
+          echo "Setup completed successfully."
+      Tags:
+        - Key: Name
+          Value: !Sub 'hmi-cert-api-server-${EnvironmentName}'
+        - Key: Project
+          Value: hmi-certificate-system
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  InstanceId:
+    Description: 'EC2 Instance ID'
+    Value: !Ref ApiServerInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceId'
+
+  PublicIp:
+    Description: 'Public IP of the API Server'
+    Value: !GetAtt ApiServerInstance.PublicIp
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicIp'
+
+  PrivateIp:
+    Description: 'Private IP of the API Server'
+    Value: !GetAtt ApiServerInstance.PrivateIp
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateIp'

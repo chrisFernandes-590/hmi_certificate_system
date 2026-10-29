@@ -139,4 +139,30 @@ A quick-reference directory mapping technical responsibilities and project featu
 | `docs/architecture/api-contracts.md` | Hono endpoints, verified routes, and planned REST specs | Implemented |
 | `docs/architecture/decisions.md` | Architectural Decision Records (ADR-001 through ADR-006) | Implemented |
 | `docs/agent-context/codebase-map.md` | Codebase quick-reference directory map (this file) | Implemented |
+| `docs/architecture/aws-inventory-report.md` | Complete read-only discovery, multi-profile account inventory, and classification report | Implemented |
+| `docs/architecture/cloud-architecture.md` | Cloud architecture diagrams, resource inventory, cost analysis, and cleanup guide | Implemented |
+| `docs/architecture/connectivity-test-report.md` | Empirical verification report for SSM, RDS verified TLS, S3 least-privilege, and migrations | Implemented |
+| `docs/architecture/public-deployment-guide.md` | Comprehensive operational guide for Nginx, static assets, reverse proxy, and environment variables | Implemented |
+| `docs/architecture/public-deployment-verification-report.md` | Empirical verification report for public web, API, cookie auth, certificates, and Cognito | Implemented |
+| `docs/architecture/public-deployment-checklist.md` | Pre-deployment, execution, verification, and hardening checklist | Implemented |
+
+---
+
+## 6. Infrastructure & Deployment (`infrastructure/`)
+
+| Path | Description | Status |
+| :--- | :--- | :--- |
+| `infrastructure/01-networking-security.yaml` | CloudFormation stack for API security group ingress rules (ports 80, 443) | Deployed |
+| `infrastructure/02-iam-roles.yaml` | CloudFormation stack for EC2 least-privilege role (SSM Session Manager, S3 scoped access, CloudWatch) | Deployed |
+| `infrastructure/03-cognito.yaml` | CloudFormation stack for Cognito User Pool and public SPA client (SRP auth, no secret) | Deployed |
+| `infrastructure/s3-cors-config.json` | S3 bucket CORS configuration for direct browser CSV imports | Applied |
+| `infrastructure/05-parameters.yaml` | CloudFormation stack for SSM Parameter Store runtime configuration | Deployed |
+| `infrastructure/06-ec2-backend.yaml` | CloudFormation stack for EC2 t4g.small AL2023 server in public subnet 1 | Deployed |
+| `infrastructure/07-monitoring-alerts.yaml` | CloudFormation stack for CloudWatch Log Group, alarms, and SNS topic | Deployed |
+| `infrastructure/setup-ec2-web.py` | Automated EC2 script for Nginx setup, static asset extraction, and env updates | Implemented |
+| `infrastructure/test-core-workflows.mjs` | Automated end-to-end lifecycle test for registration, events, certificates, and revocation | Implemented |
+| `infrastructure/test-cognito-integration.mjs` | Automated live test for Cognito InitiateAuth and API JWT validation | Implemented |
+| `infrastructure/README.md` | Deployment guide with exact AWS CLI commands and operational instructions | Implemented |
+| `.env.aws.example` | Production environment variable template with placeholders only | Implemented |
+
 

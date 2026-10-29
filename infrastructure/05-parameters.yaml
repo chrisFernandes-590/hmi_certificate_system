@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'HMI Certificate System - AWS Systems Manager Parameter Store Configuration'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  CertificateBucketName:
+    Type: String
+    Default: 'hmi-cert-pdfs-212641463846-ap-south-1'
+    Description: 'S3 bucket name for certificates and imports'
+
+  CognitoUserPoolId:
+    Type: String
+    Default: 'placeholder'
+    Description: 'Cognito User Pool ID (populated after Cognito stack creation)'
+
+  CognitoClientId:
+    Type: String
+    Default: 'placeholder'
+    Description: 'Cognito App Client ID (populated after Cognito stack creation)'
+
+  AuthWebOrigin:
+    Type: String
+    Default: 'http://localhost:5173'
+    Description: 'Allowed web origin for CORS and authentication redirects'
+
+  Port:
+    Type: String
+    Default: '3000'
+    Description: 'Application HTTP listening port'
+
+Resources:
+  ParamEnvironment:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/environment
+      Type: String
+      Value: !Ref EnvironmentName
+      Description: 'Application environment'
+      Tier: Standard
+
+  ParamS3Bucket:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/s3-bucket
+      Type: String
+      Value: !Ref CertificateBucketName
+      Description: 'Target S3 bucket for certificates and imports'
+      Tier: Standard
+
+  ParamRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/aws-region
+      Type: String
+      Value: !Ref AWS::Region
+      Description: 'Target AWS region'
+      Tier: Standard
+
+  ParamCognitoUserPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/cognito-user-pool-id
+      Type: String
+      Value: !Ref CognitoUserPoolId
+      Description: 'Cognito User Pool ID'
+      Tier: Standard
+
+  ParamCognitoClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/cognito-client-id
+      Type: String
+      Value: !Ref CognitoClientId
+      Description: 'Cognito App Client ID'
+      Tier: Standard
+
+  ParamAuthWebOrigin:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/auth-web-origin
+      Type: String
+      Value: !Ref AuthWebOrigin
+      Description: 'Frontend web origin for CORS and session cookies'
+      Tier: Standard
+
+  ParamPort:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /hmi-cert/api/port
+      Type: String
+      Value: !Ref Port
+      Description: 'Backend server listening port'
+      Tier: Standard
+
+Outputs:
+  ParametersPrefix:
+    Description: 'SSM Parameters Path Prefix'
+    Value: '/hmi-cert/api/'

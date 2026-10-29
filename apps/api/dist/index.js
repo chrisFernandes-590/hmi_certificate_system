@@ -1,11 +1,14 @@
 import { serve } from '@hono/node-server';
 import { S3Client } from '@aws-sdk/client-s3';
-import { authConfig, certificateConfig, participantImportConfig } from './config/auth-config.js';
+import { authConfig, certificateConfig, participantImportConfig, cognitoConfig } from './config/auth-config.js';
 import { db } from './db/index.js';
 import { createApp } from './app.js';
 import { DrizzleAuthRepository } from './repositories/auth/drizzle-auth-repository.js';
 import { DevelopmentConsoleEmailProvider, DisabledEmailProvider } from './services/auth/email-provider.js';
 import { LocalAuthProvider } from './services/auth/local-auth-provider.js';
+import { CognitoTokenVerifier } from './services/auth/cognito-token-verifier.js';
+import { ExternalIdentityService } from './services/auth/external-identity-service.js';
+import { HybridAuthProvider } from './services/auth/hybrid-auth-provider.js';
 import { DrizzleEventRepository } from './repositories/events/drizzle-event-repository.js';
 import { EventService } from './services/events/event-service.js';
 import { DrizzleParticipantRepository } from './repositories/participants/drizzle-participant-repository.js';
@@ -20,12 +23,19 @@ import { DrizzleParticipantImportRepository } from './repositories/participants/
 const emailProvider = authConfig.devEmailEnabled
     ? new DevelopmentConsoleEmailProvider()
     : new DisabledEmailProvider();
-const authProvider = new LocalAuthProvider(new DrizzleAuthRepository(db), emailProvider, {
+const localAuthProvider = new LocalAuthProvider(new DrizzleAuthRepository(db), emailProvider, {
     sessionTtlSeconds: authConfig.sessionTtlSeconds,
     verificationTtlSeconds: authConfig.verificationTtlSeconds,
     passwordResetTtlSeconds: authConfig.passwordResetTtlSeconds,
     appBaseUrl: authConfig.appBaseUrl,
 });
+const cognitoVerifier = cognitoConfig.userPoolId && cognitoConfig.clientId
+    ? new CognitoTokenVerifier(cognitoConfig.userPoolId, cognitoConfig.clientId)
+    : undefined;
+const identityService = cognitoVerifier
+    ? new ExternalIdentityService(db)
+    : undefined;
+const authProvider = new HybridAuthProvider(localAuthProvider, cognitoVerifier, identityService);
 const certificateStorage = certificateConfig.awsRegion && certificateConfig.bucket
     ? new S3CertificateStorage(new S3Client({
         region: certificateConfig.awsRegion,

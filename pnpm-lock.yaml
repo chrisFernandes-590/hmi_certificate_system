@@ -186,6 +186,9 @@ importers:
       argon2:
         specifier: ^0.45.1
         version: 0.45.1
+      aws-jwt-verify:
+        specifier: ^5.2.1
+        version: 5.2.1
       dotenv:
         specifier: ^18.0.7
         version: 18.0.7
@@ -1964,6 +1967,10 @@ packages:
   atomically@1.7.0:
     resolution: {integrity: sha512-Xcz9l0z7y9yQ9rdDaxlmaI4uJHf/T8g9hOEzJcsEqX2SjCj4J20uK7+ldkDHMbpJDK76wF7xEIgxc/vSlsfw5w==}
     engines: {node: '>=10.12.0'}
+
+  aws-jwt-verify@5.2.1:
+    resolution: {integrity: sha512-J+buA4M+qvQDk58WXFBLkDodkEX3DDL1ac5XFQPW3opxAsaLXYu5hYnlSHsaBRDBUXBAn695kE/cw/mdyJKwJg==}
+    engines: {node: '>=18.0.0'}
 
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
@@ -5287,6 +5294,8 @@ snapshots:
       tslib: 2.8.1
 
   atomically@1.7.0: {}
+
+  aws-jwt-verify@5.2.1: {}
 
   balanced-match@4.0.4: {}
 
